@@ -24,7 +24,7 @@
 #include "master_server.h"
 #include "webserv.h"
 
-int Service_Request(int conn);
+void *Service_Request();
 int  Parse_HTTP_Header(char * buffer, struct ReqInfo * reqinfo);
 int  Get_Request      (int conn, struct ReqInfo * reqinfo);
 void InitReqInfo      (struct ReqInfo * reqinfo);
@@ -33,7 +33,6 @@ int Output_HTTP_Headers(int conn, struct ReqInfo * reqinfo);
 int Return_Resource (int conn, FILE *resource, struct ReqInfo * reqinfo);
 FILE *Check_Resource  (struct ReqInfo * reqinfo);
 int Return_Error_Msg(int conn, struct ReqInfo * reqinfo);
-void    Error_Quit(char const * msg);
 int     Trim      (char * buffer);
 int     StrUpper  (char * buffer);
 void    CleanURL  (char * buffer);
@@ -41,147 +40,113 @@ ssize_t Readline  (int sockd, void *vptr, size_t maxlen);
 ssize_t Writeline (int sockd, const void *vptr, size_t n);
 
 #define SERVER_PORT            (8080)
-static char server_root[1000] = "./html/";
 
 char *htmlReplace();
-
 
 void *webServerListener(){
     int    listener, conn;
     pid_t  pid;
     struct sockaddr_in servaddr;
 	int yes=1;        // for setsockopt() SO_REUSEADDR, below
+	pthread_t thread;
     
     /*  Create socket  */
 
-    if ( (listener = socket(AF_INET, SOCK_STREAM, 0)) < 0 )
-	Error_Quit("Couldn't create listening socket.");
-
+    if ( (listener = socket(AF_INET, SOCK_STREAM, 0)) < 0 ){
+		syslog(LOG_NOTICE,"Couldn't create listening socket.");
+		pthread_exit(NULL);
+    }
 
     /*  Populate socket address structure  */
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
     servaddr.sin_port        = htons(SERVER_PORT);
 
 	setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
     /*  Assign socket address to socket  */ 
 
-    if ( bind(listener, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0 )
-	Error_Quit("Couldn't bind listening socket.");
-
+    if ( bind(listener, (struct sockaddr *) &servaddr, sizeof(servaddr)) < 0 ){
+		syslog(LOG_NOTICE,"Couldn't bind listening socket.");
+		pthread_exit(NULL);
+	}
 
     /*  Make socket a listening socket  */
 
-    if ( listen(listener, LISTENQ) < 0 )
-	Error_Quit("Call to listen failed.");
-
+    if ( listen(listener, LISTENQ) < 0 ){
+		syslog(LOG_NOTICE,"Call to listen failed.");
+		pthread_exit(NULL);
+	}
 	syslog(LOG_NOTICE,"Web server started");
-
     /*  Loop infinitely to accept and service connections  */
 
     while ( 1 ) {
 
 	/*  Wait for connection  */
 
-	if ( (conn = accept(listener, NULL, NULL)) < 0 )
-	    Error_Quit("Error calling accept()");
-
-
-	/*  Fork child process to service connection  */
-
-	if ( (pid = fork()) == 0 ) {
-
-	    /*  This is now the forked child process, so
-		close listening socket and service request   */
-
-	    if ( close(listener) < 0 )
-		Error_Quit("Error closing listening socket in child.");
-	    
-	    Service_Request(conn);
-
-
-	    /*  Close connected socket and exit  */
-
-	    if ( close(conn) < 0 )
-		Error_Quit("Error closing connection socket.");
-	    exit(EXIT_SUCCESS);
-	}
-
-
-	/*  If we get here, we are still in the parent process,
-	    so close the connected socket, clean up child processes,
-	    and go back to accept a new connection.                   */
-
-	if ( close(conn) < 0 )
-	    Error_Quit("Error closing connection socket in parent.");
-
-	waitpid(-1, NULL, WNOHANG);
+		if ( (conn = accept(listener, NULL, NULL)) < 0 ){
+			syslog(LOG_NOTICE,"Error calling accept()");
+			continue;
+		}
+		pthread_create(&thread, NULL, Service_Request,(void *)conn);
     }
 
 }
 
-int Service_Request(int conn) {
+void *Service_Request(void *f) {
 
-    struct ReqInfo  reqinfo;
+	int conn = (intptr_t)f;
     FILE *resource;
+	struct ReqInfo  reqinfo;
 
     InitReqInfo(&reqinfo);
-
     
     /*  Get HTTP request  */
+    if ( Get_Request(conn, &reqinfo) < 0 ) printf("error");
+	//return -1;
 
-    if ( Get_Request(conn, &reqinfo) < 0 )
-	return -1;
-
-	
-    /*  Check whether resource exists, whether we have permission
-	to access it, and update status code accordingly.          */
 
 	if (reqinfo.method == POST){
 		handlePost(conn,&reqinfo);
 	}
+	if (strlen(reqinfo.resource) == 1) sprintf(reqinfo.resource,"/index.html");
 
-	if ( reqinfo.status == 200 )
-	if ( (resource = Check_Resource(&reqinfo)) < 0 ) {
-	    if ( errno == EACCES )
-		reqinfo.status = 401;
-	    else
-		reqinfo.status = 404;
+/*  Check whether resource exists, whether we have permission
+	to access it, and update status code accordingly.          */
+	if ( reqinfo.status == 200 ){
+		if ( (resource = Check_Resource(&reqinfo)) < 0 ) {
+			if ( errno == EACCES )
+			reqinfo.status = 401;
+			else
+			reqinfo.status = 404;
+		}
 	}
-
     /*  Output HTTP response headers if we have a full request  */
 
     if ( reqinfo.type == FULL )
 	Output_HTTP_Headers(conn, &reqinfo);
-
-
     /*  Service the HTTP request  */
     if ( reqinfo.status == 200 ) {
-	if ( Return_Resource(conn, resource, &reqinfo) )
-	    Error_Quit("Something wrong returning resource.");
+		if ( Return_Resource(conn, resource, &reqinfo) ) syslog(LOG_NOTICE,"Something wrong returning resource.");
     }
-    else
-	Return_Error_Msg(conn, &reqinfo);
+    else Return_Error_Msg(conn, &reqinfo);
 
     if ( resource > 0 )
-	if ( fclose(resource) < 0 )
-	    Error_Quit("Error closing resource.");
+	if ( fclose(resource) < 0 ) syslog(LOG_NOTICE,"Error closing resource.");
     FreeReqInfo(&reqinfo);
-
-    return 0;
+	close(conn);
 }
 
 int Parse_HTTP_Header(char * buffer, struct ReqInfo * reqinfo) {
 
-    static int first_header = 1;
+    //static int first_header = 1;
     char      *temp;
     char      *endptr;
     int        len;
+	int first = 0;
 
-
-    if ( first_header == 1 ) {
+    //if ( first_header == 1 ) {
 
 	/*  If first_header is 0, this is the first line of
 	    the HTTP request, so this should be the request line.  */
@@ -191,22 +156,25 @@ int Parse_HTTP_Header(char * buffer, struct ReqInfo * reqinfo) {
 	if ( !strncmp(buffer, "GET ", 4) ) {
 	    reqinfo->method = GET;
 	    buffer += 4;
+		first = 1;
 	}
 	else if ( !strncmp(buffer, "HEAD ", 5) ) {
 	    reqinfo->method = HEAD;
 	    buffer += 5;
+		first = 1;
 	}
 	else if ( !strncmp(buffer, "POST ", 5) ) {
 		reqinfo->method = POST;
 	    buffer += 5;
+		first = 1;
 	}
-	else {
+	/*else {
 	    reqinfo->method = UNSUPPORTED;
 	    reqinfo->status = 501;
 	    return -1;
-	}
+	}*/
 
-
+	if (first == 1){
 	/*  Skip to start of resource  */
 
 	while ( *buffer && isspace(*buffer) )
@@ -235,13 +203,12 @@ int Parse_HTTP_Header(char * buffer, struct ReqInfo * reqinfo) {
 	    we don't bother checking the validity of the HTTP version
 	    information supplied - we just assume that if it is
 	    supplied, then it's a full request.                        */
-
 	if ( strstr(buffer, "HTTP/") )
 	    reqinfo->type = FULL;
 	else
 	    reqinfo->type = SIMPLE;
 
-	first_header = 0;
+	//first_header = 0;
 	return 0;
     }
 
@@ -338,7 +305,7 @@ int Get_Request(int conn, struct ReqInfo * reqinfo) {
 	/*  Take appropriate action based on return from select()  */
 
 	if ( rval < 0 ) {
-	    Error_Quit("Error calling select() in get_request()");
+	    syslog(LOG_NOTICE,"Error calling select() in get_request()");
 	}
 	else if ( rval == 0 ) {
 
@@ -357,7 +324,6 @@ int Get_Request(int conn, struct ReqInfo * reqinfo) {
 	    if ( buffer[0] == '\0'){
 			break;
 		}
-
 	    if ( Parse_HTTP_Header(buffer, reqinfo) )
 		break;
 	}
@@ -410,14 +376,14 @@ int Return_Resource(int conn, FILE *resource, struct ReqInfo * reqinfo) {
 
     char c;
     int  i;
-	char line[500];
-	char sendLine[500];
-
+	char line[2000];
+	char sendLine[2000];
 	if (strstr(reqinfo->resource,".html")){
 		while(fgets(line,sizeof(line),resource)){
 			sprintf(sendLine,"%s",htmlReplace(line,reqinfo->resource));
 			if ( write(conn, sendLine, strlen(sendLine)) < 1 ){
-				Error_Quit("Error sending file.");
+				syslog(LOG_NOTICE,"Error sending file.");
+				break;
 			}
 		}
 	}
@@ -425,7 +391,8 @@ int Return_Resource(int conn, FILE *resource, struct ReqInfo * reqinfo) {
 		while (!feof(resource)){
 			c = fgetc(resource);
 			if ( write(conn, &c, 1) < 1 ){
-				Error_Quit("Error sending file.");
+				syslog(LOG_NOTICE,"Error sending file.");
+				break;
 			}
 		}
 	}
@@ -442,14 +409,14 @@ FILE *Check_Resource(struct ReqInfo * reqinfo) {
 
     /*  Resource name can contain urlencoded
 	data, so clean it up just in case.    */
-
+	char server_root[1000] = "./html";
     CleanURL(reqinfo->resource);
 
     
     /*  Concatenate resource name to server root, and try to open  */
 
     strcat(server_root, reqinfo->resource);
-    return fopen(server_root, "r");
+	return fopen(server_root, "r");
 }
 
 
@@ -471,14 +438,6 @@ int Return_Error_Msg(int conn, struct ReqInfo * reqinfo) {
     Writeline(conn, buffer, strlen(buffer));
 
     return 0;
-}
-
-
-/*  Prints an error message and quits  */
-
-void Error_Quit(char const * msg) {
-    fprintf(stderr, "WEBSERV: %s\n", msg);
-    exit(EXIT_FAILURE);
 }
 
  
@@ -506,7 +465,7 @@ ssize_t Readline(int sockd, void *vptr, size_t maxlen) {
 	else {
 	    if ( errno == EINTR )
 		continue;
-	    Error_Quit("Error in Readline()");
+	    syslog(LOG_NOTICE,"Error in Readline()");
 	}
     }
 
@@ -530,7 +489,7 @@ ssize_t Writeline(int sockd, const void *vptr, size_t n) {
 	    if ( errno == EINTR )
 		nwritten = 0;
 	    else
-		Error_Quit("Error in Writeline()");
+		syslog(LOG_NOTICE,"Error in Writeline()");
 	}
 	nleft  -= nwritten;
 	buffer += nwritten;

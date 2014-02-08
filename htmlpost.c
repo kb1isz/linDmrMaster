@@ -38,7 +38,7 @@ int handlePost(int conn, struct ReqInfo  *reqinfo){
 	
 		rval = select(conn + 1, &fds, NULL, NULL, &tv);
 		if ( rval < 0 ) {
-			Error_Quit("Error calling select() in get_request()");
+			syslog(LOG_NOTICE,"Error calling select() in get_request()");
 		}
 		else if ( rval == 0 ) {
 			break;
@@ -49,16 +49,58 @@ int handlePost(int conn, struct ReqInfo  *reqinfo){
 			handleParameter(buffer);
 		}
 	}
+	restart = 1;
 }
 
 void handleParameter(char buffer[MAX_REQ_LINE]){
 	char *param;
 	char *value;
+	char *listValue;
 	char SQLQUERY[300];
 	if(param = strtok(buffer,"=")){
 		if (strstr(param,"page")){
 			value = strtok(NULL,"=");
 			sprintf(page,"%s",value);
+		}
+		else if(strstr(param,"addedList")){
+			value = strtok(NULL,"=");
+			if (value != NULL){
+				listValue = strtok(value,";");
+				if (listValue != NULL){
+					sprintf(SQLQUERY,"INSERT INTO %s (repeaterId) VALUES (%s)",page,listValue);
+					syslog(LOG_NOTICE,"Updating database '%s'",SQLQUERY);
+					if (sqlite3_exec(db,SQLQUERY,0,0,0) != 0){
+						syslog(LOG_NOTICE,"Database error: %s",sqlite3_errmsg(db));
+					}
+				}
+				while (listValue = strtok(NULL,";")){
+					sprintf(SQLQUERY,"INSERT INTO %s (repeaterId) VALUES (%s)",page,listValue);
+					syslog(LOG_NOTICE,"Updating database '%s'",SQLQUERY);
+					if (sqlite3_exec(db,SQLQUERY,0,0,0) != 0){
+						syslog(LOG_NOTICE,"Database error: %s",sqlite3_errmsg(db));
+					}
+				}
+			}
+		}
+		else if(strstr(param,"removedList")){
+			value = strtok(NULL,"=");
+			if (value != NULL){
+				listValue = strtok(value,";");
+				if (listValue != NULL){
+					sprintf(SQLQUERY,"DELETE FROM %s WHERE repeaterId = %s",page,listValue);
+					syslog(LOG_NOTICE,"Updating database '%s'",SQLQUERY);
+					if (sqlite3_exec(db,SQLQUERY,0,0,0) != 0){
+						syslog(LOG_NOTICE,"Database error: %s",sqlite3_errmsg(db));
+					}
+				}
+				while (listValue = strtok(NULL,";")){
+					sprintf(SQLQUERY,"DELETE FROM %s WHERE repeaterId = %s",page,listValue);
+					syslog(LOG_NOTICE,"Updating database '%s'",SQLQUERY);
+					if (sqlite3_exec(db,SQLQUERY,0,0,0) != 0){
+						syslog(LOG_NOTICE,"Database error: %s",sqlite3_errmsg(db));
+					}
+				}
+			}
 		}
 		else{
 			value = strtok(NULL,"=");

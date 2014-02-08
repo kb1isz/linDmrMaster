@@ -19,11 +19,13 @@
 
 #include "master_server.h"
 
-char *htmlReplace(char line[500], char *resource){
+char *htmlReplace(char line[2000], char *resource){
 	
 	char *pos;
-	char tmpLine[500];
+	char tmpLine[2000];
 	int cpLen;
+	char SQLQUERY[300];
+	sqlite3_stmt *stmt;
 
 if (strstr(resource,"master.html")){
 	if(pos = strstr(line,"$repTS1")){
@@ -174,5 +176,29 @@ if (strstr(resource,"sMaster.html")){
 	}
 
 }
-	return line;
+if (strstr(resource,"repeaters.html")){
+	if(pos = strstr(line,"$repeaters")){
+		memset(line,0,2000);
+		sprintf(SQLQUERY,"SELECT repeaterId,callsign FROM repeaters");
+		if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
+			while (sqlite3_step(stmt) != SQLITE_DONE){
+				sprintf(tmpLine,"<option value='%i'>%i-->%s</option>\n",sqlite3_column_int(stmt,0),sqlite3_column_int(stmt,0),sqlite3_column_text(stmt,1));
+				strcat(line,tmpLine);
+			}
+			sqlite3_finalize(stmt);
+		}
+	}
+}
+if (strstr(resource,"restart.html")){
+	if(pos = strstr(line,"$redirectPage")){
+		cpLen = strlen(line) - strlen(pos);
+		strncpy(tmpLine,line,cpLen);
+		tmpLine[cpLen] = 0;
+		sprintf(page,"%s.html",page);
+		strcat(tmpLine,page);
+		strcat(tmpLine,pos+13);
+		sprintf(line,"%s",tmpLine);
+	}
+}
+return line;
 }
