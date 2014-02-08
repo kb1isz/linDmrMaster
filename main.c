@@ -138,6 +138,7 @@ void serviceListener(port){
 	FD_ZERO(&fdService);
 	
 	for (;;){
+		FD_SET(sockfd, &fdService);
 		timeout.tv_sec = 2;
 		timeout.tv_usec = 0;
 		rc = select(sockfd+1, &fdService, NULL, NULL, &timeout);
