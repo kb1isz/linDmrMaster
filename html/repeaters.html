@@ -1,0 +1,259 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>LinDmrMaster</title>
+<meta name="generator" content="WYSIWYG Web Builder 9 Trial Version - http://www.wysiwygwebbuilder.com">
+<style type="text/css">
+body
+{
+   background-color: #87CEEB;
+   color: #000000;
+   font-family: Arial;
+   font-size: 13px;
+   margin: 0;
+   padding: 0;
+}
+</style>
+<style type="text/css">
+a
+{
+   color: #0000FF;
+   text-decoration: underline;
+}
+a:visited
+{
+   color: #800080;
+}
+a:active
+{
+   color: #FF0000;
+}
+a:hover
+{
+   color: #0000FF;
+   text-decoration: underline;
+}
+</style>
+<style type="text/css">
+#wb_Text1 
+{
+   background-color: transparent;
+   border: 0px #000000 solid;
+   padding: 0;
+   text-align: left;
+}
+#wb_Text1 div
+{
+   text-align: left;
+}
+#wb_Form1
+{
+   background-color: transparent;
+   border: 0px #000000 solid;
+}
+#Button1
+{
+   border: 1px #A9A9A9 solid;
+   -moz-border-radius: 20px;
+   -webkit-border-radius: 20px;
+   border-radius: 20px;
+   background-color: #F0F0F0;
+   color: #000000;
+   font-family: Arial;
+   font-size: 13px;
+}
+#Combobox1
+{
+   border: 1px #A9A9A9 solid;
+   background-color: #FFFFFF;
+   color: #000000;
+   font-family: Arial;
+   font-size: 13px;
+}
+#wb_Text2 
+{
+   background-color: transparent;
+   border: 0px #000000 solid;
+   padding: 0;
+   text-align: left;
+}
+#wb_Text2 div
+{
+   text-align: left;
+}
+#wb_Text3 
+{
+   background-color: transparent;
+   border: 0px #000000 solid;
+   padding: 0;
+   text-align: left;
+}
+#wb_Text3 div
+{
+   text-align: left;
+}
+#Editbox1
+{
+   border: 1px #A9A9A9 solid;
+   background-color: #FFFFFF;
+   color :#000000;
+   font-family: Arial;
+   font-size: 13px;
+   text-align: left;
+   vertical-align: middle;
+}
+#Button2
+{
+   border: 1px #A9A9A9 solid;
+   -moz-border-radius: 20px;
+   -webkit-border-radius: 20px;
+   border-radius: 20px;
+   background-color: #F0F0F0;
+   color: #000000;
+   font-family: Arial;
+   font-size: 13px;
+}
+#Button3
+{
+   border: 1px #A9A9A9 solid;
+   -moz-border-radius: 20px;
+   -webkit-border-radius: 20px;
+   border-radius: 20px;
+   background-color: #F0F0F0;
+   color: #000000;
+   font-family: Arial;
+   font-size: 13px;
+}
+#wb_CssMenu1
+{
+   border: 0px #C0C0C0 solid;
+   background-color: transparent;
+}
+#wb_CssMenu1 ul
+{
+   list-style-type: none;
+   margin: 0;
+   padding: 0;
+   width: 80px;
+}
+#wb_CssMenu1 li
+{
+   float: left;
+   margin: 0;
+   padding: 0px 0px 4px 0px;
+   width: 80px;
+}
+#wb_CssMenu1 a
+{
+   display: block;
+   color: #666666;
+   border: 1px #C0C0C0 solid;
+   -moz-border-radius: 10px;
+   -webkit-border-radius: 10px;
+   border-radius: 10px;
+   background-color: #EEEEEE;
+   background-image: none;
+   font-family: Arial;
+   font-size: 13px;
+   font-weight: normal;
+   font-style: normal;
+   text-decoration: none;
+   width: 68px;
+   height: 26px;
+   padding: 0px 5px 0px 5px;
+   vertical-align: middle;
+   line-height: 26px;
+   text-align: center;
+}
+#wb_CssMenu1 li:hover a, #wb_CssMenu1 a:hover
+{
+   color: #666666;
+   background-color: #C0C0C0;
+   background-image: none;
+   border: 1px #696969 solid;
+}
+#wb_CssMenu1 .firstmain a
+{
+   margin-top: 0px;
+}
+#wb_CssMenu1 li.lastmain
+{
+   padding-bottom: 0px;
+}
+#wb_CssMenu1 br
+{
+   clear: both;
+   font-size: 1px;
+   height: 0;
+   line-height: 0px;
+}
+</style>
+<script>
+function listRepeaters(){
+	var select1 = document.getElementById('Combobox1');
+	var values = new Array();
+
+	for(var i=0; i < select1.options.length; i++){
+	    values.push(select1.options[i].value);
+	}
+
+	var allValues = values.join(";");
+	var list = document.getElementById('repList');
+	list.value = allValues;
+}
+function addRepeater(){
+	var newRepeater = document.getElementById('Editbox1').value;
+	if(newRepeater){
+		var select1 = document.getElementById('Combobox1');
+		select1.options[select1.options.length] = new Option(newRepeater + '-->',newRepeater);
+		var added = document.getElementById('addedList');
+		added.value = added.value + newRepeater + ";";
+	}
+}
+function removeRepeater(){
+	var select1 = document.getElementById('Combobox1');
+	var removed = document.getElementById('removedList');
+	removed.value = removed.value + select1.options[select1.selectedIndex].value + ";";
+	select1.remove(select1.selectedIndex);
+}
+</script>
+</head>
+<body>
+<img src="images/img0003.jpg" id="Banner1" alt="LinDmrMaster" style="position:absolute;left:156px;top:5px;width:791px;height:135px;border-width:0;z-index:8;">
+<div id="wb_Shape1" style="position:absolute;left:13px;top:4px;width:142px;height:566px;z-index:9;">
+<img src="images/img0004.png" id="Shape1" alt="" style="border-width:0;width:142px;height:566px;"></div>
+<div id="wb_Text1" style="position:absolute;left:45px;top:547px;width:76px;height:18px;z-index:10;text-align:left;">
+<span style="color:#191970;font-family:Arial;font-size:16px;">ON4AKH</span></div>
+<div id="wb_Form1" style="position:absolute;left:157px;top:144px;width:783px;height:425px;z-index:11;">
+<form name="repeaters" method="post" action="restart.html" enctype="text/plain" id="Form1" onsubmit="listRepeaters()">
+<input type="hidden" name="page" value="repeaters">
+<input type="hidden" name="repList" value="" id="repList">
+<input type="hidden" name="removedList" value="" id="removedList">
+<input type="hidden" name="addedList" value="" id="addedList">
+<input type="submit" id="Button1" name="" value="Submit" style="position:absolute;left:321px;top:359px;width:96px;height:32px;z-index:0;">
+<select name="repeaterList" size="17" id="Combobox1" style="position:absolute;left:506px;top:38px;width:198px;height:278px;z-index:1;">
+$repeaters
+</select>
+<div id="wb_Text2" style="position:absolute;left:551px;top:10px;width:100px;height:16px;z-index:2;text-align:left;">
+<span style="color:#000000;font-family:Arial;font-size:13px;">Repeater ID List</span></div>
+<div id="wb_Text3" style="position:absolute;left:137px;top:16px;width:128px;height:16px;z-index:3;text-align:left;">
+<span style="color:#000000;font-family:Arial;font-size:13px;">New Repeater ID</span></div>
+<input type="text" id="Editbox1" style="position:absolute;left:124px;top:37px;width:120px;height:24px;line-height:24px;z-index:4;" name="" value="">
+<input type="button" id="Button2" name="Add" value="Add" onclick = "addRepeater()" style="position:absolute;left:316px;top:33px;width:96px;height:30px;z-index:5;">
+<input type="button" id="Button3" name="Remove" value="Remove" onclick = "removeRepeater()" style="position:absolute;left:317px;top:102px;width:96px;height:30px;z-index:6;">
+</form>
+</div>
+<div id="wb_CssMenu1" style="position:absolute;left:42px;top:45px;width:83px;height:135px;z-index:12;">
+<ul>
+<li class="firstmain"><a href="./master.html" target="_self">Master</a>
+</li>
+<li><a href="./sMaster.html" target="_self">sMaster</a>
+</li>
+<li><a href="./repeaters.html" target="_self">Repeaters</a>
+</li>
+</ul>
+<br>
+</div>
+</body>
+</html>
