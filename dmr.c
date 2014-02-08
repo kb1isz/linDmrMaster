@@ -259,6 +259,11 @@ void *dmrListener(void *f){
 			}
 		}
 		else{
+			if (restart){
+				syslog(LOG_NOTICE,"Exiting dmr thread (restart)");
+				close(sockfd);
+				pthread_exit(NULL);
+			}
 			time(&timeNow);
 			if (repeaterList[repPos].sending[1] && dmrState[1] != IDLE){
 				if (voicePacketsReceived[1] == 0) voicePacketsReceived[1] = 1;

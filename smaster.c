@@ -200,6 +200,11 @@ void *sMasterThread(){
 			}
 		}
 		else{
+			if (restart){
+				syslog(LOG_NOTICE,"Exiting sMaster thread (restart)");
+				close(sockfd);
+				pthread_exit(NULL);
+			}
 			time(&timeNow);
 			if (sMaster.sending[1] && dmrState[1] != IDLE){
 				dmrState[1] = IDLE;

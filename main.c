@@ -29,11 +29,14 @@ int echoId = 9990;
 char version[5] = "0.5";
 
 struct repeater repeaterList[100] = {0};
+struct repeater emptyRepeater = {0};
 struct masterInfo master;
+static const struct masterInfo emptyMaster = {0};
 struct ts tsInfo = {0};
 
 int rdacSock=0;
 int highestRepeater = 0;
+int restart = 0;
 
 sqlite3 *db;
 sqlite3 *openDatabase();
@@ -106,7 +109,7 @@ int findRepeater(struct sockaddr_in address){
 void serviceListener(port){
 	
 	pthread_t thread;
-	int sockfd,n,i;
+	int sockfd,n,i,rc;
 	struct sockaddr_in servaddr,cliaddr;
 	socklen_t len;
 	unsigned char buffer[500];
@@ -120,6 +123,8 @@ void serviceListener(port){
 	struct repeater repeaterInfo;
 	sqlite3_stmt *stmt;
 	unsigned char SQLQUERY[200] = {0};
+	fd_set fdService;
+	struct timeval timeout;
 
 	syslog(LOG_NOTICE,"Listener for port %i started",port);
 
@@ -130,110 +135,128 @@ void serviceListener(port){
 	servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
 	servaddr.sin_port=htons(port);
 	bind(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr));
+	FD_ZERO(&fdService);
 	
 	for (;;){
-		len = sizeof(cliaddr);
-		memset(&buffer,0,500);
-		//receive info from service port when available
-		n = recvfrom(sockfd,buffer,500,0,(struct sockaddr *)&cliaddr,&len);
-		if (memcmp(buffer,command,sizeof(command)) == 0){  //See if what is received is a command or heartbeat
- 			inet_ntop(AF_INET, &(cliaddr.sin_addr), str, INET_ADDRSTRLEN);
-			switch (buffer[20]){
-				case 0x10:  //PTPP request received
-				syslog(LOG_NOTICE,"PTPP request from repeater [%s]",str);
-				memcpy(response,buffer,n);
-				//Assign device ID
-				response[4]++;
-				response[13]=0x01;
-				response[n] = 0x01;
-				sendto(sockfd,response,n+1,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
-				syslog(LOG_NOTICE,"Assigned PTPP device 1 to repeater [%s]",str);
-				setRdacRepeater(cliaddr);
-				break;
+		timeout.tv_sec = 2;
+		timeout.tv_usec = 0;
+		rc = select(sockfd+1, &fdService, NULL, NULL, &timeout);
+		if (FD_ISSET(sockfd,&fdService)) {
+			len = sizeof(cliaddr);
+			memset(&buffer,0,500);
+			n = recvfrom(sockfd,buffer,500,0,(struct sockaddr *)&cliaddr,&len);
+			if (memcmp(buffer,command,sizeof(command)) == 0){  //See if what is received is a command or heartbeat
+				inet_ntop(AF_INET, &(cliaddr.sin_addr), str, INET_ADDRSTRLEN);
+				switch (buffer[20]){
+					case 0x10:  //PTPP request received
+					syslog(LOG_NOTICE,"PTPP request from repeater [%s]",str);
+					memcpy(response,buffer,n);
+					//Assign device ID
+					response[4]++;
+					response[13]=0x01;
+					response[n] = 0x01;
+					sendto(sockfd,response,n+1,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+					syslog(LOG_NOTICE,"Assigned PTPP device 1 to repeater [%s]",str);
+					setRdacRepeater(cliaddr);
+					break;
 				
-				case 0x11:{  //Request to startup DMR received
-				int rdacPos;
-				syslog(LOG_NOTICE,"DMR request from repeater [%s]",str);
-				//See if the repeater is already known in the RDAC list
-				rdacPos = findRdacRepeater(cliaddr);
-				if (rdacPos == 99){  //If  not ignore the DMR request
-					syslog(LOG_NOTICE,"DMR request from repeater not in RDAC list [%s], ignoring",str);
-					continue;
-				}
-				//See if RDAC info from the repeater has already been received
-				if (!rdacList[rdacPos].id > 0){ //If not ignore DMR request
-					syslog(LOG_NOTICE,"RDAC info not received from repeater yet [%s], ignoring",str);
-					continue;
-				}
-				//Now that we have repeater info, initialize the repeater
-				repPos = initRepeater(rdacList[rdacPos]);
-				if (repPos == 99) continue;   //If 99 returned, more repeaters then allowed
-				memcpy(response,buffer,n);
-				//Assign device ID
-				response[4]++;
-				response[13]=0x01;
-				response[n] = 0x01;
-				cliaddr.sin_port=htons(port);
-				sendto(sockfd,response,n+1,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
-				syslog(LOG_NOTICE,"Assigned DMR device 1 to repeater [%s - %s]",str,repeaterList[repPos].callsign);
-				//Assign port number
-				response[4] = 0x0b;
-				unsigned char rep[] = {0x00,0xff,0x01,0x00};
-				memcpy(response + 12,rep,4);
-				unsigned char rport[] = {0xff,0x01,0x00,0x00};
-				redirectPort = baseDmrPort + repPos; 
-				rport[2] = redirectPort;
-				rport[3] = redirectPort >> 8;
-				memcpy(response + n,rport,4);
-				if (repeaterList[repPos].dmrOnline){  //If repeater is not offline, but we still get a request, just point it back to old thread
-					syslog(LOG_NOTICE,"DMR request from repeater [%s - %s] already assigned a DMR port, not starting thread",str,repeaterList[repPos].callsign);
-				}
-				else{  //Start a new DMR thread for this repeater
-					pthread_create(&thread, NULL, dmrListener,(void *)repPos);
-				}
-				sendto(sockfd,response,n+4,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
-				syslog(LOG_NOTICE,"Re-directed repeater [%s - %s] to DMR port %i",str,repeaterList[repPos].callsign,redirectPort);
-				break;}
+					case 0x11:{  //Request to startup DMR received
+					int rdacPos;
+					syslog(LOG_NOTICE,"DMR request from repeater [%s]",str);
+					//See if the repeater is already known in the RDAC list
+					rdacPos = findRdacRepeater(cliaddr);
+					if (rdacPos == 99){  //If  not ignore the DMR request
+						syslog(LOG_NOTICE,"DMR request from repeater not in RDAC list [%s], ignoring",str);
+						continue;
+					}
+					//See if RDAC info from the repeater has already been received
+					if (!rdacList[rdacPos].id > 0){ //If not ignore DMR request
+						syslog(LOG_NOTICE,"RDAC info not received from repeater yet [%s], ignoring",str);
+						continue;
+					}
+					//Now that we have repeater info, initialize the repeater
+					repPos = initRepeater(rdacList[rdacPos]);
+					if (repPos == 99) continue;   //If 99 returned, more repeaters then allowed
+					memcpy(response,buffer,n);
+					//Assign device ID
+					response[4]++;
+					response[13]=0x01;
+					response[n] = 0x01;
+					cliaddr.sin_port=htons(port);
+					sendto(sockfd,response,n+1,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+					syslog(LOG_NOTICE,"Assigned DMR device 1 to repeater [%s - %s]",str,repeaterList[repPos].callsign);
+					//Assign port number
+					response[4] = 0x0b;
+					unsigned char rep[] = {0x00,0xff,0x01,0x00};
+					memcpy(response + 12,rep,4);
+					unsigned char rport[] = {0xff,0x01,0x00,0x00};
+					redirectPort = baseDmrPort + repPos; 
+					rport[2] = redirectPort;
+					rport[3] = redirectPort >> 8;
+					memcpy(response + n,rport,4);
+					if (repeaterList[repPos].dmrOnline){  //If repeater is not offline, but we still get a request, just point it back to old thread
+						syslog(LOG_NOTICE,"DMR request from repeater [%s - %s] already assigned a DMR port, not starting thread",str,repeaterList[repPos].callsign);
+					}
+					else{  //Start a new DMR thread for this repeater
+						pthread_create(&thread, NULL, dmrListener,(void *)repPos);
+					}
+					sendto(sockfd,response,n+4,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+					syslog(LOG_NOTICE,"Re-directed repeater [%s - %s] to DMR port %i",str,repeaterList[repPos].callsign,redirectPort);
+					break;}
 
-				case 0x12:{  ////Request to startup RDAC received
-				int rdacPos;
-				syslog(LOG_NOTICE,"RDAC request from repeater [%s]",str);
-				//Initialize this repeater for RDAC
-				rdacPos = setRdacRepeater(cliaddr);
-				if (rdacPos == 99) continue;   //If 99 returned, more repeaters then allowed
+					case 0x12:{  ////Request to startup RDAC received
+					int rdacPos;
+					syslog(LOG_NOTICE,"RDAC request from repeater [%s]",str);
+					//Initialize this repeater for RDAC
+					rdacPos = setRdacRepeater(cliaddr);
+					if (rdacPos == 99) continue;   //If 99 returned, more repeaters then allowed
+					memcpy(response,buffer,n);
+					//Assign device ID
+					response[4]++;
+					response[13]=0x01;
+					response[n] = 0x01;
+					cliaddr.sin_port=htons(port);
+					sendto(sockfd,response,n+1,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+					syslog(LOG_NOTICE,"Assigned RDAC device 1 to repeater [%s]",str);
+					//Assign port number
+					response[4] = 0x0b;
+					unsigned char rep[] = {0xff,0xff,0x01,0x00};
+					memcpy(response + 12,rep,4);
+					unsigned char port[] = {0xff,0x01,0x00,0x00};
+					redirectPort = baseRdacPort + (rdacPos * 2);
+					port[2] = redirectPort;
+					port[3] = redirectPort >> 8;
+					memcpy(response + n,port,4);
+					if (rdacList[rdacPos].dmrOnline){  //If repeater is not offline, but we still get a request, just point it back to old thread
+						syslog(LOG_NOTICE,"DMR request from repeater [%s - %s] already assigned a RDAC port, not starting thread",str,repeaterList[repPos].callsign);
+					}
+					else{  //Start a new RDAC thread for this repeater
+						struct sockInfo *param = malloc(sizeof(struct sockInfo));
+						param->address = cliaddr;
+						param->port = redirectPort;
+						pthread_create(&thread, NULL, rdacListener,param);
+					}
+					sendto(sockfd,response,n+4,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+					syslog(LOG_NOTICE,"Re-directed repeater [%s] to RDAC port %i",str,redirectPort);
+					break;}
+				}
+			}
+		
+			if ((memcmp(buffer,ping,sizeof(ping)) == 0 || memcmp(buffer,ping2,sizeof(ping2)) == 0) && repeaterList[findRepeater(cliaddr)].dmrOnline){//Is this a heartbeat from a repeater on the service port ? And do we know the repeater ?
 				memcpy(response,buffer,n);
-				//Assign device ID
-				response[4]++;
-				response[13]=0x01;
-				response[n] = 0x01;
-				cliaddr.sin_port=htons(port);
-				sendto(sockfd,response,n+1,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
-				syslog(LOG_NOTICE,"Assigned RDAC device 1 to repeater [%s]",str);
-				//Assign port number
-				response[4] = 0x0b;
-				unsigned char rep[] = {0xff,0xff,0x01,0x00};
-				memcpy(response + 12,rep,4);
-				unsigned char port[] = {0xff,0x01,0x00,0x00};
-				redirectPort = baseRdacPort + (rdacPos * 2);
-				port[2] = redirectPort;
-				port[3] = redirectPort >> 8;
-				memcpy(response + n,port,4);
-				if (rdacList[rdacPos].dmrOnline){  //If repeater is not offline, but we still get a request, just point it back to old thread
-					syslog(LOG_NOTICE,"DMR request from repeater [%s - %s] already assigned a RDAC port, not starting thread",str,repeaterList[repPos].callsign);
+				response[12]++;
+				sendto(sockfd,response,n,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+				if (restart){
+					syslog(LOG_NOTICE,"Exiting serviceListener (restart)");
+					return;
 				}
-				else{  //Start a new RDAC thread for this repeater
-					pthread_create(&thread, NULL, rdacListener,(void *)redirectPort);
-				}
-				sendto(sockfd,response,n+4,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
-				syslog(LOG_NOTICE,"Re-directed repeater [%s] to RDAC port %i",str,redirectPort);
-				break;}
 			}
 		}
-		
-		if ((memcmp(buffer,ping,sizeof(ping)) == 0 || memcmp(buffer,ping2,sizeof(ping2)) == 0) && repeaterList[findRdacRepeater(cliaddr)].dmrOnline){//Is this a heartbeat from a repeater on the service port ? And do we know the repeater ?
-			memcpy(response,buffer,n);
-			response[12]++;
-			sendto(sockfd,response,n,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+		else{
+			if (restart){
+				syslog(LOG_NOTICE,"Exiting serviceListener (restart)");
+				return;
+			}
 		}
 	}
 }
@@ -316,7 +339,7 @@ int loadTalkGroups(){
 	unsigned char sMasterTS2[100];
 	unsigned char repTS1[100];
 	unsigned char repTS2[100];
-			
+	
 	sprintf(SQLQUERY,"SELECT repTS1,repTS2,sMasterTS1,sMasterTS2 FROM master");
 	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
 		if (sqlite3_step(stmt) == SQLITE_ROW){
@@ -491,10 +514,11 @@ int main(int argc, char**argv)
 	pthread_t thread;
 	int port;
 	int dbInit;
+	int i;
 	
 	//init syslog output
 	setlogmask (LOG_UPTO (LOG_NOTICE));
-    openlog("Master-server", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+	openlog("Master-server", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
 
 	db = openDatabase();
 	
@@ -509,19 +533,28 @@ int main(int argc, char**argv)
 		printf("Needed to create new tables in the database, populate tables and start Master_Server again\n");
 		return 0;
 	}
-	dmrState[1] = IDLE;
-	dmrState[2] = IDLE;
-
-    //Get info to get us going
-	if(!getMasterInfo()) return 0;
-	//Load the allowed talkgroups
-	if(!loadTalkGroups()) return 0;
-	//Start sMaster Thread
-	pthread_create(&thread, NULL, sMasterThread,NULL);
-	//Start RDAC Thread
-	//pthread_create(&thread, NULL, rdacListener,(void *)rdacPort);
+	//Start webserver thread
 	pthread_create(&thread, NULL, webServerListener,NULL);
-	//Start listening on the service port
-	serviceListener(servicePort);
 
+    for(;;){
+		restart = 0;
+		dmrState[1] = IDLE;
+		dmrState[2] = IDLE;
+		//Get info to get us going
+		if(!getMasterInfo()) return 0;
+		//Load the allowed talkgroups
+		if(!loadTalkGroups()) return 0;
+		//Start sMaster Thread
+		pthread_create(&thread, NULL, sMasterThread,NULL);
+		//Start listening on the service port
+		serviceListener(servicePort);
+		//If we got here, we are restarting, waiting for all threads to end
+		sleep(6);
+		master = emptyMaster;
+		highestRepeater = 0;
+		for (i=0;i<99;i++){
+			repeaterList[i] = emptyRepeater;
+			rdacList[i] = emptyRepeater;
+		}
+	}
 }

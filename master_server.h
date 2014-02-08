@@ -80,6 +80,11 @@ struct ts{
 	unsigned char sMasterTS2[100];
 };
 
+struct sockInfo{
+	struct sockaddr_in address;
+	int port;
+};
+
 typedef enum {VOICE, DATA, IDLE} state;
 
 extern struct repeater repeaterList[100];
@@ -108,3 +113,5 @@ extern int ownCCInt;
 extern int ownRegionInt;
 extern char version[5];
 extern sqlite3 *db;
+extern int restart;
+extern char page[50];

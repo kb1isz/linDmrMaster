@@ -282,18 +282,21 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
 }
 
 
-void *rdacListener(void *f){
+void *rdacListener(void* f){
 	int sockfd,n,i,rc;
-	struct sockaddr_in servaddr,cliaddr;
+	struct sockaddr_in servaddr;
 	socklen_t len;
 	unsigned char buffer[500];
 	unsigned char response[500] ={0};
-	int port = (intptr_t)f;
+	//int port = (intptr_t)f;
+	struct sockInfo* param = (struct sockInfo*) f;
+	int port = param->port;
+	struct sockaddr_in cliaddr = param->address;
 	int repPos = 0;
 	fd_set fdMaster;
 	struct timeval timeout;
 	time_t timeNow,pingTime;
-
+	
 	syslog(LOG_NOTICE,"Listener for port %i started",port);
 	sockfd=socket(AF_INET,SOCK_DGRAM,0);
 
@@ -316,6 +319,11 @@ void *rdacListener(void *f){
 			pthread_exit(NULL);
         }
 		if (FD_ISSET(sockfd,&fdMaster)) {
+			if (restart){
+				syslog(LOG_NOTICE,"Exiting RDAC thread (restart)");
+				close(sockfd);
+				pthread_exit(NULL);
+			}
 			n = recvfrom(sockfd,buffer,500,0,(struct sockaddr *)&cliaddr,&len);
 			if (n>2){
 			}
@@ -330,10 +338,21 @@ void *rdacListener(void *f){
 			}
 		}
 		else{
+			if (restart){
+				syslog(LOG_NOTICE,"Exiting RDAC thread (restart)");
+				close(sockfd);
+				pthread_exit(NULL);
+			}
 			time(&timeNow);
 			if (difftime(timeNow,pingTime) > 60) {
-				syslog(LOG_NOTICE,"PING timeout on RDAC port %i repeater %s, exiting thread",port,rdacList[repPos].callsign);
-				syslog(LOG_NOTICE,"Removing repeater from list position %i",repPos);
+				repPos = findRdacRepeater(cliaddr);
+				if (repPos !=99){
+					syslog(LOG_NOTICE,"PING timeout on RDAC port %i repeater %s, exiting thread",port,rdacList[repPos].callsign);
+					syslog(LOG_NOTICE,"Removing repeater from list position %i",repPos);
+				}
+				else{
+					syslog(LOG_NOTICE,"PING timeout on RDAC port %i repeater already removed from list, exiting thread",port);
+				}
 				delRdacRepeater(cliaddr);
 				close(sockfd);
 				pthread_exit(NULL);

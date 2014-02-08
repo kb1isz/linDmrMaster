@@ -62,7 +62,7 @@ int initDatabase(sqlite3 *db){
 	bool neededToCreate = false;
 	
 	if (!isTableExists(db,"master")){
-		sprintf(SQLQUERY,"CREATE TABLE master (repTS1 VARCHAR(100) default '',repTS2 VARCHAR(100) default '',sMasterTS1 VARCHAR(100) default '',sMasterTS2 VARCHAR(100) default '', timeBase INTEGER default 60, servicePort int default 50000, rdacPort int default 50002,dmrPort int default 50001, baseDmrPort int default 50100, baseRdacPort int default 50200, maxRepeaters int default 20)");
+		sprintf(SQLQUERY,"CREATE TABLE master (repTS1 VARCHAR(100) default '',repTS2 VARCHAR(100) default '',sMasterTS1 VARCHAR(100) default '',sMasterTS2 VARCHAR(100) default '', timeBase INTEGER default 60, servicePort int default 50000, rdacPort int default 50002,dmrPort int default 50001, baseDmrPort int default 50100, baseRdacPort int default 50200, maxRepeaters int default 20, echoId int default 9990)");
 		if (sqlite3_exec(db,SQLQUERY,0,0,0) == 0){
 			neededToCreate = true;
 			sprintf(SQLQUERY,"INSERT INTO master (repTS1) VALUES ('')");
