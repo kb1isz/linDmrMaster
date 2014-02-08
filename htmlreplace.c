@@ -188,6 +188,9 @@ if (strstr(resource,"repeaters.html")){
 			sqlite3_finalize(stmt);
 		}
 	}
+	if (strlen(line) == 0){
+		sprintf(line,"<option value='none'>none</option>\n");
+	}
 }
 if (strstr(resource,"restart.html")){
 	if(pos = strstr(line,"$redirectPage")){

@@ -528,11 +528,7 @@ int main(int argc, char**argv)
 		syslog(LOG_NOTICE,"Failed to init database");
 		return 0;
 	}
-	if (dbInit == 2){
-		syslog(LOG_NOTICE,"Needed to create new tables in the database, populate tables and start Master_Server again");
-		printf("Needed to create new tables in the database, populate tables and start Master_Server again\n");
-		return 0;
-	}
+
 	//Start webserver thread
 	pthread_create(&thread, NULL, webServerListener,NULL);
 
