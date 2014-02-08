@@ -18,7 +18,7 @@ make
 A directory Release will be created.<br>
 The executable is Master_Server.
 
-Wherever you place Master_Server, copy the HTML directory to that directory
+Wherever you place Master_Server, copy the HTML directory and rdac.in to that directory
 
 More info can be found at http://linuxdmr.be
 
