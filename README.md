@@ -5,7 +5,7 @@ Linux DMR master server
 
 Prerequisite to compile
 
-Have the SQLITE3 development library libsqlite3-dev
+Have the SQLITE3 development library libsqlite3-dev<br>
 In Debian derivatives sudo apt-get install libsqlite3-dev
 
 How to compile:
