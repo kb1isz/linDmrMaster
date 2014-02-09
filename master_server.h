@@ -40,6 +40,7 @@ struct repeater{
 	int sockfd;
 	bool dmrOnline;
 	bool rdacOnline;
+	bool rdacUpdated;
 	bool sending[3];
 	int id;
 	unsigned char callsign[17];

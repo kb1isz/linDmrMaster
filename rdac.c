@@ -244,7 +244,7 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
 						rxFreq = rxFreq/1000000;
 						shift = rxFreq - txFreq;
 						sprintf(rdacList[repPos].shift,"%1.1f",shift);
-						rdacList[repPos].rdacOnline = true;
+						rdacList[repPos].rdacUpdated = true;
 						break;}
 					}
 				}
@@ -298,8 +298,9 @@ void *rdacListener(void* f){
 	time_t timeNow,pingTime;
 	
 	syslog(LOG_NOTICE,"Listener for port %i started",port);
+	repPos = findRdacRepeater(cliaddr);
+	rdacList[repPos].rdacOnline = true;
 	sockfd=socket(AF_INET,SOCK_DGRAM,0);
-
 	bzero(&servaddr,sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
@@ -330,9 +331,8 @@ void *rdacListener(void* f){
 			else{
 				time(&pingTime);
 				response[0] = 0x41;
-				repPos = findRdacRepeater(cliaddr);
 				if (repPos !=99) sendto(sockfd,response,n,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
-				if (repPos !=99 && !rdacList[repPos].rdacOnline){
+				if (repPos !=99 && !rdacList[repPos].rdacUpdated){
 					getRepeaterInfo(sockfd,repPos,cliaddr);
 				}
 			}
