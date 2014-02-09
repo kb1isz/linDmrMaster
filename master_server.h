@@ -43,6 +43,9 @@ struct repeater{
 	bool rdacUpdated;
 	bool sending[3];
 	int id;
+	time_t lastPTPPConnect;
+	time_t lastDMRConnect;
+	time_t lastRDACConnect;
 	unsigned char callsign[17];
 	unsigned char txFreq[10];
 	unsigned char shift[7];

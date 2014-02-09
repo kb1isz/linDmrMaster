@@ -125,6 +125,7 @@ void serviceListener(port){
 	unsigned char SQLQUERY[200] = {0};
 	fd_set fdService;
 	struct timeval timeout;
+	time_t timeNow;
 
 	syslog(LOG_NOTICE,"Listener for port %i started",port);
 
@@ -148,8 +149,12 @@ void serviceListener(port){
 			n = recvfrom(sockfd,buffer,500,0,(struct sockaddr *)&cliaddr,&len);
 			if (memcmp(buffer,command,sizeof(command)) == 0){  //See if what is received is a command or heartbeat
 				inet_ntop(AF_INET, &(cliaddr.sin_addr), str, INET_ADDRSTRLEN);
+				time(&timeNow);
 				switch (buffer[20]){
-					case 0x10:  //PTPP request received
+					int rdacPos;
+					case 0x10:{  //PTPP request received
+					rdacPos = setRdacRepeater(cliaddr);
+					if (difftime(timeNow,rdacList[rdacPos].lastPTPPConnect) < 120) continue;  //Ignore connect request
 					syslog(LOG_NOTICE,"PTPP request from repeater [%s]",str);
 					memcpy(response,buffer,n);
 					//Assign device ID
@@ -158,14 +163,15 @@ void serviceListener(port){
 					response[n] = 0x01;
 					sendto(sockfd,response,n+1,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
 					syslog(LOG_NOTICE,"Assigned PTPP device 1 to repeater [%s]",str);
-					setRdacRepeater(cliaddr);
-					break;
+					time(&rdacList[rdacPos].lastPTPPConnect);
+					break;}
 				
 					case 0x11:{  //Request to startup DMR received
 					int rdacPos;
 					syslog(LOG_NOTICE,"DMR request from repeater [%s]",str);
 					//See if the repeater is already known in the RDAC list
 					rdacPos = findRdacRepeater(cliaddr);
+					if (difftime(timeNow,rdacList[rdacPos].lastDMRConnect) < 120) continue;  //Ignore connect request
 					if (rdacPos == 99){  //If  not ignore the DMR request
 						syslog(LOG_NOTICE,"DMR request from repeater not in RDAC list [%s], ignoring",str);
 						continue;
@@ -203,13 +209,15 @@ void serviceListener(port){
 					}
 					sendto(sockfd,response,n+4,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
 					syslog(LOG_NOTICE,"Re-directed repeater [%s - %s] to DMR port %i",str,repeaterList[repPos].callsign,redirectPort);
+					time(&rdacList[rdacPos].lastDMRConnect);
 					break;}
 
 					case 0x12:{  ////Request to startup RDAC received
 					int rdacPos;
-					syslog(LOG_NOTICE,"RDAC request from repeater [%s]",str);
 					//Initialize this repeater for RDAC
 					rdacPos = setRdacRepeater(cliaddr);
+					if (difftime(timeNow,rdacList[rdacPos].lastRDACConnect) < 120) continue;  //Ignore connect request
+					syslog(LOG_NOTICE,"RDAC request from repeater [%s]",str);
 					if (rdacPos == 99) continue;   //If 99 returned, more repeaters then allowed
 					memcpy(response,buffer,n);
 					//Assign device ID
@@ -239,6 +247,7 @@ void serviceListener(port){
 					}
 					sendto(sockfd,response,n+4,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
 					syslog(LOG_NOTICE,"Re-directed repeater [%s] to RDAC port %i",str,redirectPort);
+					time(&rdacList[rdacPos].lastRDACConnect);
 					break;}
 				}
 			}

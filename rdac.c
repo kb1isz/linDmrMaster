@@ -87,7 +87,6 @@ int setRdacRepeater(struct sockaddr_in address){
 			sprintf(rdacList[i].mode,"%s",sqlite3_column_text(stmt,6));
 			syslog(LOG_NOTICE,"Assigning %s %s %s %s %s %s to repeater on pos %i from database",rdacList[i].callsign,rdacList[i].hardware
 			,rdacList[i].firmware,rdacList[i].mode,rdacList[i].txFreq,rdacList[i].shift,i);
-			//rdacList[i].rdacOnline = true;
 		}
 	}
 	sqlite3_finalize(stmt);
