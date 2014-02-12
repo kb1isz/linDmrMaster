@@ -302,6 +302,7 @@ void *rdacListener(void* f){
 	struct timeval timeout;
 	time_t timeNow,pingTime;
 	char str[INET_ADDRSTRLEN];
+	int updateAttempts;
 
 	inet_ntop(AF_INET, &(cliaddrOrg.sin_addr), str, INET_ADDRSTRLEN);
 	
@@ -340,7 +341,9 @@ void *rdacListener(void* f){
 				time(&pingTime);
 				response[0] = 0x41;
 				if (repPos !=99 && cliaddr.sin_addr.s_addr == cliaddrOrg.sin_addr.s_addr) sendto(sockfd,response,n,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
-				if (repPos !=99 && !rdacList[repPos].rdacUpdated && cliaddr.sin_addr.s_addr == cliaddrOrg.sin_addr.s_addr){
+				if (repPos !=99 && !rdacList[repPos].rdacUpdated && cliaddr.sin_addr.s_addr == cliaddrOrg.sin_addr.s_addr && updateAttempts < 10){
+					updateAttempts++;
+					if (updateAttempts == 10) syslog(LOG_NOTICE,"Failed to update from RDAC on port %i [%s]",port,str);
 					getRepeaterInfo(sockfd,repPos,cliaddr);
 				}
 			}
