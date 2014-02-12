@@ -154,7 +154,7 @@ void serviceListener(port){
 					int rdacPos;
 					case 0x10:{  //PTPP request received
 					rdacPos = setRdacRepeater(cliaddr);
-					if (difftime(timeNow,rdacList[rdacPos].lastPTPPConnect) < 120) continue;  //Ignore connect request
+					if (difftime(timeNow,rdacList[rdacPos].lastPTPPConnect) < 10) continue;  //Ignore connect request
 					syslog(LOG_NOTICE,"PTPP request from repeater [%s]",str);
 					memcpy(response,buffer,n);
 					//Assign device ID
@@ -168,10 +168,11 @@ void serviceListener(port){
 				
 					case 0x11:{  //Request to startup DMR received
 					int rdacPos;
-					syslog(LOG_NOTICE,"DMR request from repeater [%s]",str);
 					//See if the repeater is already known in the RDAC list
 					rdacPos = findRdacRepeater(cliaddr);
-					if (difftime(timeNow,rdacList[rdacPos].lastDMRConnect) < 120) continue;  //Ignore connect request
+					if (difftime(timeNow,rdacList[rdacPos].lastDMRConnect) < 10) continue;  //Ignore connect request
+					time(&rdacList[rdacPos].lastDMRConnect);
+					syslog(LOG_NOTICE,"DMR request from repeater [%s]",str);
 					if (rdacPos == 99){  //If  not ignore the DMR request
 						syslog(LOG_NOTICE,"DMR request from repeater not in RDAC list [%s], ignoring",str);
 						continue;
@@ -209,14 +210,13 @@ void serviceListener(port){
 					}
 					sendto(sockfd,response,n+4,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
 					syslog(LOG_NOTICE,"Re-directed repeater [%s - %s] to DMR port %i",str,repeaterList[repPos].callsign,redirectPort);
-					time(&rdacList[rdacPos].lastDMRConnect);
 					break;}
 
 					case 0x12:{  ////Request to startup RDAC received
 					int rdacPos;
 					//Initialize this repeater for RDAC
 					rdacPos = setRdacRepeater(cliaddr);
-					if (difftime(timeNow,rdacList[rdacPos].lastRDACConnect) < 120) continue;  //Ignore connect request
+					if (difftime(timeNow,rdacList[rdacPos].lastRDACConnect) < 10) continue;  //Ignore connect request
 					syslog(LOG_NOTICE,"RDAC request from repeater [%s]",str);
 					if (rdacPos == 99) continue;   //If 99 returned, more repeaters then allowed
 					memcpy(response,buffer,n);
@@ -236,8 +236,8 @@ void serviceListener(port){
 					port[2] = redirectPort;
 					port[3] = redirectPort >> 8;
 					memcpy(response + n,port,4);
-					if (rdacList[rdacPos].dmrOnline){  //If repeater is not offline, but we still get a request, just point it back to old thread
-						syslog(LOG_NOTICE,"DMR request from repeater [%s - %s] already assigned a RDAC port, not starting thread",str,repeaterList[repPos].callsign);
+					if (rdacList[rdacPos].rdacOnline){  //If repeater is not offline, but we still get a request, just point it back to old thread
+						syslog(LOG_NOTICE,"RDAC request from repeater [%s - %s] already assigned a RDAC port, not starting thread",str,rdacList[rdacPos].callsign);
 					}
 					else{  //Start a new RDAC thread for this repeater
 						struct sockInfo *param = malloc(sizeof(struct sockInfo));
@@ -560,7 +560,6 @@ int main(int argc, char**argv)
 	int dbInit;
 	int i;
 	
-
 	db = openDatabase();
 	
 	//Init and create sqlite database if needed

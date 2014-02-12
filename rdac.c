@@ -294,17 +294,18 @@ void *rdacListener(void* f){
 	//int port = (intptr_t)f;
 	struct sockInfo* param = (struct sockInfo*) f;
 	int port = param->port;
-	struct sockaddr_in cliaddr = param->address;
+	struct sockaddr_in cliaddrOrg = param->address;
+	struct sockaddr_in cliaddr;
 	int repPos = 0;
 	fd_set fdMaster;
 	struct timeval timeout;
 	time_t timeNow,pingTime;
 	char str[INET_ADDRSTRLEN];
 
-	inet_ntop(AF_INET, &(cliaddr.sin_addr), str, INET_ADDRSTRLEN);
+	inet_ntop(AF_INET, &(cliaddrOrg.sin_addr), str, INET_ADDRSTRLEN);
 	
 	syslog(LOG_NOTICE,"Listener for port %i started [%s]",port,str);
-	repPos = findRdacRepeater(cliaddr);
+	repPos = findRdacRepeater(cliaddrOrg);
 	rdacList[repPos].rdacOnline = true;
 	sockfd=socket(AF_INET,SOCK_DGRAM,0);
 	bzero(&servaddr,sizeof(servaddr));
@@ -337,8 +338,8 @@ void *rdacListener(void* f){
 			else{
 				time(&pingTime);
 				response[0] = 0x41;
-				if (repPos !=99) sendto(sockfd,response,n,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
-				if (repPos !=99 && !rdacList[repPos].rdacUpdated){
+				if (repPos !=99 && cliaddr.sin_addr.s_addr == cliaddrOrg.sin_addr.s_addr) sendto(sockfd,response,n,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
+				if (repPos !=99 && !rdacList[repPos].rdacUpdated && cliaddr.sin_addr.s_addr == cliaddrOrg.sin_addr.s_addr){
 					getRepeaterInfo(sockfd,repPos,cliaddr);
 				}
 			}
