@@ -50,6 +50,7 @@ void delRdacRepeater(struct sockaddr_in address){
 		if (rdacList[i].address.sin_addr.s_addr == address.sin_addr.s_addr){
 			rdacList[i].address.sin_addr.s_addr = 0;
 			rdacList[i].rdacOnline = false;
+			rdacList[i].rdacUpdated = false;
 			return;
 		} 
 	}
