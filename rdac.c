@@ -60,6 +60,7 @@ int setRdacRepeater(struct sockaddr_in address){
 	int i;
 	sqlite3_stmt *stmt;
 	char SQLQUERY[300];
+	char str[INET_ADDRSTRLEN];
 	
 	for(i=0;i<maxRepeaters;i++){
 		if (rdacList[i].address.sin_addr.s_addr == address.sin_addr.s_addr) return i;
@@ -74,6 +75,7 @@ int setRdacRepeater(struct sockaddr_in address){
 		return 99;
 	}
 	rdacList[i].address = address;
+	inet_ntop(AF_INET, &(address.sin_addr), str, INET_ADDRSTRLEN);
 	//See if there is already info in the database based on IP address
 	sprintf(SQLQUERY,"SELECT repeaterId,callsign,txFreq,shift,hardware,firmware,mode FROM repeaters WHERE currentAddress = %lu",(long)address.sin_addr.s_addr);
 	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
@@ -85,8 +87,8 @@ int setRdacRepeater(struct sockaddr_in address){
 			sprintf(rdacList[i].hardware,"%s",sqlite3_column_text(stmt,4));
 			sprintf(rdacList[i].firmware,"%s",sqlite3_column_text(stmt,5));
 			sprintf(rdacList[i].mode,"%s",sqlite3_column_text(stmt,6));
-			syslog(LOG_NOTICE,"Assigning %s %s %s %s %s %s to repeater on pos %i from database",rdacList[i].callsign,rdacList[i].hardware
-			,rdacList[i].firmware,rdacList[i].mode,rdacList[i].txFreq,rdacList[i].shift,i);
+			syslog(LOG_NOTICE,"Assigning %s %s %s %s %s %s to repeater on pos %i from database [%s]",rdacList[i].callsign,rdacList[i].hardware
+			,rdacList[i].firmware,rdacList[i].mode,rdacList[i].txFreq,rdacList[i].shift,i,str);
 		}
 	}
 	sqlite3_finalize(stmt);
@@ -126,11 +128,13 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
 	double rxFreq;
 	double shift;
 	int cnt;
+	char str[INET_ADDRSTRLEN];
 	socklen_t len;
 	size_t srclen,dstlen;
 	sqlite3_stmt *stmt;
 	char SQLQUERY[300];
-		
+
+	inet_ntop(AF_INET, &(cliaddrOrg.sin_addr), str, INET_ADDRSTRLEN);
 	FD_ZERO(&master);
 	len = sizeof(cliaddr);
 	fp=fopen("rdac.in","r");
@@ -187,7 +191,7 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
 					switch (select_str(lineread)){
 						case 0:  //0 = repeaterId
 						rdacList[repPos].id = buffer[20] << 16 | buffer[19] << 8 | buffer[18];
-						syslog(LOG_NOTICE,"Assigning id %i to repeater on RDAC pos %i",rdacList[repPos].id,repPos);
+						syslog(LOG_NOTICE,"Assigning id %i to repeater on RDAC pos %i [%s]",rdacList[repPos].id,repPos,str);
 						break;
 						
 						case 1: {//1 = callsign
@@ -250,27 +254,27 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
 			}
 		}
 	}
-	syslog(LOG_NOTICE,"Updating from RDAC %s %s %s %s %s %s to repeater on pos %i",rdacList[repPos].callsign,rdacList[repPos].hardware
-	,rdacList[repPos].firmware,rdacList[repPos].mode,rdacList[repPos].txFreq,rdacList[repPos].shift,repPos);
+	syslog(LOG_NOTICE,"Updating from RDAC %s %s %s %s %s %s to repeater on pos %i [%s]",rdacList[repPos].callsign,rdacList[repPos].hardware
+	,rdacList[repPos].firmware,rdacList[repPos].mode,rdacList[repPos].txFreq,rdacList[repPos].shift,repPos,str);
 	sprintf(SQLQUERY,"SELECT count(*) FROM repeaters WHERE repeaterId = %i",rdacList[repPos].id);
 	time_t now = time(NULL);
 	struct tm *t = localtime(&now);
 	strftime(timeStamp,sizeof(timeStamp),"%Y-%m-%d %H:%M:%S",t);
 	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
 		if (sqlite3_step(stmt) == SQLITE_ROW){
-			sprintf(SQLQUERY,"UPDATE repeaters SET callsign = '%s', txFreq = '%s', shift = '%s', hardware = '%s', firmware = '%s', mode = '%s', currentAddress = %lu, timeStamp = '%s' WHERE repeaterId = %i",
+			sprintf(SQLQUERY,"UPDATE repeaters SET callsign = '%s', txFreq = '%s', shift = '%s', hardware = '%s', firmware = '%s', mode = '%s', currentAddress = %lu, timeStamp = '%s', ipAddress = '%s'  WHERE repeaterId = %i",
 			rdacList[repPos].callsign,rdacList[repPos].txFreq,rdacList[repPos].shift,rdacList[repPos].hardware,rdacList[repPos].
-			firmware,rdacList[repPos].mode,(long)cliaddrOrg.sin_addr.s_addr,timeStamp,rdacList[repPos].id);
+			firmware,rdacList[repPos].mode,(long)cliaddrOrg.sin_addr.s_addr,timeStamp,str,rdacList[repPos].id);
 			sqlite3_exec(db,SQLQUERY,0,0,0);
 
 		}
 		else{
-			syslog(LOG_NOTICE,"RDAC, no row, removing repeater from list");
+			syslog(LOG_NOTICE,"RDAC, no row, removing repeater from list [%s]",str);
 			delRdacRepeater(cliaddrOrg);
 		}
 	}
 	else{
-		syslog(LOG_NOTICE,"RDAC, bad query, removing repeater from list");
+		syslog(LOG_NOTICE,"RDAC, bad query, removing repeater from list [%s]",str);
 		delRdacRepeater(cliaddrOrg);
 		close(sockfd);
 		pthread_exit(NULL);
@@ -295,8 +299,11 @@ void *rdacListener(void* f){
 	fd_set fdMaster;
 	struct timeval timeout;
 	time_t timeNow,pingTime;
+	char str[INET_ADDRSTRLEN];
+
+	inet_ntop(AF_INET, &(cliaddr.sin_addr), str, INET_ADDRSTRLEN);
 	
-	syslog(LOG_NOTICE,"Listener for port %i started",port);
+	syslog(LOG_NOTICE,"Listener for port %i started [%s]",port,str);
 	repPos = findRdacRepeater(cliaddr);
 	rdacList[repPos].rdacOnline = true;
 	sockfd=socket(AF_INET,SOCK_DGRAM,0);
@@ -346,8 +353,8 @@ void *rdacListener(void* f){
 			if (difftime(timeNow,pingTime) > 60) {
 				repPos = findRdacRepeater(cliaddr);
 				if (repPos !=99){
-					syslog(LOG_NOTICE,"PING timeout on RDAC port %i repeater %s, exiting thread",port,rdacList[repPos].callsign);
-					syslog(LOG_NOTICE,"Removing repeater from list position %i",repPos);
+					syslog(LOG_NOTICE,"PING timeout on RDAC port %i repeater %s, exiting thread [%s]",port,rdacList[repPos].callsign,str);
+					syslog(LOG_NOTICE,"Removing repeater from list position %i [%s]",repPos,str);
 				}
 				else{
 					syslog(LOG_NOTICE,"PING timeout on RDAC port %i repeater already removed from list, exiting thread",port);
