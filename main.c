@@ -33,6 +33,7 @@ struct repeater emptyRepeater = {0};
 struct masterInfo master;
 static const struct masterInfo emptyMaster = {0};
 struct ts tsInfo = {0};
+struct sockaddr_in discardList[100] = {0};
 
 int rdacSock=0;
 int highestRepeater = 0;
@@ -58,6 +59,31 @@ void *rdacListener();
 void *sMasterThread();
 void *webServerListener();
 
+void discard(struct sockaddr_in address){
+	int i;
+	for(i=0;i<maxRepeaters;i++){
+		if (discardList[i].sin_addr.s_addr == address.sin_addr.s_addr) return;
+	}
+	//If not found, find first empty position in the list
+	for(i=0;i<maxRepeaters;i++){
+		if (discardList[i].sin_addr.s_addr == 0) break;
+	}
+	
+	//oops, max repeaters reached
+	if (i == maxRepeaters){
+		syslog(LOG_NOTICE,"Not possible to add repeater in discard list, maximum number reached");
+		return;
+	}
+	discardList[i] = address;
+}
+
+bool isDiscarded(struct sockaddr_in address){
+	int i;
+	for(i=0;i<maxRepeaters;i++){
+		if (discardList[i].sin_addr.s_addr == address.sin_addr.s_addr) return true;
+	}
+	return false;
+}
 
 int initRepeater(struct repeater repeaterInfo){
 	//Initialize a repeater in the DMR list
@@ -153,6 +179,7 @@ void serviceListener(port){
 				switch (buffer[20]){
 					int rdacPos;
 					case 0x10:{  //PTPP request received
+					if(isDiscarded(cliaddr)) continue;
 					rdacPos = setRdacRepeater(cliaddr);
 					if (difftime(timeNow,rdacList[rdacPos].lastPTPPConnect) < 10) continue;  //Ignore connect request
 					syslog(LOG_NOTICE,"PTPP request from repeater [%s]",str);
@@ -169,6 +196,7 @@ void serviceListener(port){
 					case 0x11:{  //Request to startup DMR received
 					int rdacPos;
 					//See if the repeater is already known in the RDAC list
+					if(isDiscarded(cliaddr)) continue;
 					rdacPos = findRdacRepeater(cliaddr);
 					if (difftime(timeNow,rdacList[rdacPos].lastDMRConnect) < 10) continue;  //Ignore connect request
 					time(&rdacList[rdacPos].lastDMRConnect);
@@ -215,6 +243,7 @@ void serviceListener(port){
 					case 0x12:{  ////Request to startup RDAC received
 					int rdacPos;
 					//Initialize this repeater for RDAC
+					if(isDiscarded(cliaddr)) continue;
 					rdacPos = setRdacRepeater(cliaddr);
 					if (difftime(timeNow,rdacList[rdacPos].lastRDACConnect) < 10) continue;  //Ignore connect request
 					syslog(LOG_NOTICE,"RDAC request from repeater [%s]",str);

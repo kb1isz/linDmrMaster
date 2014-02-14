@@ -21,7 +21,7 @@
 
 
 struct repeater rdacList[100] = {0};
-
+void discard();
 
 int select_str(char *s)
 {
@@ -193,6 +193,18 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
 						case 0:  //0 = repeaterId
 						rdacList[repPos].id = buffer[20] << 16 | buffer[19] << 8 | buffer[18];
 						syslog(LOG_NOTICE,"Assigning id %i to repeater on RDAC pos %i [%s]",rdacList[repPos].id,repPos,str);
+						sprintf(SQLQUERY,"SELECT repeaterId FROM repeaters WHERE repeaterId = %i",rdacList[repPos].id);
+						if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
+							if (sqlite3_step(stmt) != SQLITE_ROW){
+								syslog(LOG_NOTICE,"Repeater with id %i not known in database, removing from list pos %i [%s]",rdacList[repPos].id,repPos,str);
+								delRdacRepeater(cliaddrOrg);
+								fclose(fp);
+								syslog(LOG_NOTICE,"Setting repeater in discard list [%s]",str);
+								discard(cliaddrOrg);
+								close(sockfd);
+								pthread_exit(NULL);
+							}
+						}
 						break;
 						
 						case 1: {//1 = callsign

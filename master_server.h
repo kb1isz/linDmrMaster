@@ -100,6 +100,7 @@ extern char databaseServer[50];
 extern char databaseUser[20];
 extern char databasePassword[20];
 extern char database[20];
+extern struct sockaddr_in discardList[100];
 extern int highestRepeater;
 extern int servicePort;
 extern int dmrPort;
