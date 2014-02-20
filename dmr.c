@@ -77,6 +77,7 @@ struct allow checkTalkGroup(int dstId, int slot, int callType){
 				toSend.repeater = true;
 				toSend.sMaster = true;
 				if (sMasterTS2List[i][0] != sMasterTS2List[i][1]) toSend.isRange = true;
+				syslog(LOG_NOTICE,"allowed is here");
 				return toSend;
 			}
 		}
@@ -121,9 +122,6 @@ void *dmrListener(void *f){
 	int dstId = 0;
 	int callType = 0;
 	unsigned char slot = 0;
-	unsigned char voiceSeq[3],prevVoiceSeq[3];
-	long voicePacketsReceived[3];
-	long voicePacketsLost[3];
 	fd_set fdMaster;
 	struct timeval timeout;
 	time_t timeNow,pingTime;
@@ -142,10 +140,6 @@ void *dmrListener(void *f){
 	repeaterList[repPos].sending[2] = false;
 	block[1] = false;
 	block[2] = false;
-	voicePacketsReceived[1] = 0;
-	voicePacketsReceived[2] = 0;
-	voicePacketsLost[1] = 0;
-	voicePacketsLost[2] = 0;
 	//create frame to append after packet for sMaster
 	memset(sMasterFrame,0,103);
 	memcpy(myId,(char*)&repeaterList[repPos].id,sizeof(int));
@@ -180,12 +174,6 @@ void *dmrListener(void *f){
 				if (dmrState[slot] == IDLE || repeaterList[repPos].sending[slot]){
 					packetType = buffer[PTYPE_OFFSET];
 					sync = buffer[SYNC_OFFSET1] << 8 | buffer[SYNC_OFFSET2];
-					if (sync == VCALL){
-						voicePacketsReceived[slot]++;
-						voiceSeq[slot] = buffer[4];
-						if (prevVoiceSeq[slot] !=0 && prevVoiceSeq[slot] + 1 != voiceSeq[slot]) voicePacketsLost[slot]++;
-						if (voiceSeq[slot] != 0xff) prevVoiceSeq[slot] = voiceSeq[slot]; else prevVoiceSeq[slot] = 0;
-					}
 					switch (packetType){
 				
 						case 0x01:
@@ -228,13 +216,9 @@ void *dmrListener(void *f){
 						if (sync == VCALLEND){
 							dmrState[slot] = IDLE;
 							repeaterList[repPos].sending[slot] = false;
-							if (voicePacketsReceived[slot] == 0) voicePacketsReceived[slot] = 1;
-							syslog(LOG_NOTICE,"[%i-%s]Voice call ended on slot %i packet loss %.2f %%",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,(double)((voicePacketsLost[slot]/voicePacketsReceived[slot])*100));
+							syslog(LOG_NOTICE,"[%i-%s]Voice call ended on slot %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot);
 							if (block[slot] == true) syslog(LOG_NOTICE,"[%i-%s] But was blocked because of not allowed talk group",baseDmrPort + repPos,repeaterList[repPos].callsign);
 							block[slot] = false;
-							prevVoiceSeq[slot] = 0;
-							voicePacketsReceived[slot] = 0;
-							voicePacketsLost[slot] = 0;
 						}
 						break;
 					}
@@ -266,26 +250,18 @@ void *dmrListener(void *f){
 			}
 			time(&timeNow);
 			if (repeaterList[repPos].sending[1] && dmrState[1] != IDLE){
-				if (voicePacketsReceived[1] == 0) voicePacketsReceived[1] = 1;
-				if (dmrState[1] = VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 1 packet loss %.2f %%",baseDmrPort + repPos,repeaterList[repPos].callsign,(double)((voicePacketsLost[1]/voicePacketsReceived[1])*100));
+				if (dmrState[1] = VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 1",baseDmrPort + repPos,repeaterList[repPos].callsign);
 				dmrState[1] = IDLE;
 				repeaterList[repPos].sending[1] = false;
 				block[1] = false;
 				syslog(LOG_NOTICE,"[%i-%s]Slot 1 IDLE",baseDmrPort + repPos,repeaterList[repPos].callsign);
-				prevVoiceSeq[1] = 0;
-				voicePacketsReceived[1] = 0;
-				voicePacketsLost[1] = 0;
 			}
 			if (repeaterList[repPos].sending[2] && dmrState[2] != IDLE){
-				if (voicePacketsReceived[2] == 0) voicePacketsReceived[2] = 1;
-				if (dmrState[2] = VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 2 packet loss %.2f %%",baseDmrPort + repPos,repeaterList[repPos].callsign,(double)((voicePacketsLost[2]/voicePacketsReceived[2])*100));
+				if (dmrState[2] = VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 2",baseDmrPort + repPos,repeaterList[repPos].callsign);
 				dmrState[2] = IDLE;
 				repeaterList[repPos].sending[2] = false;
 				block[2] = false;
 				syslog(LOG_NOTICE,"[%i-%s]Slot 2 IDLE",baseDmrPort + repPos,repeaterList[repPos].callsign);
-				prevVoiceSeq[2] = 0;
-				voicePacketsReceived[2] = 0;
-				voicePacketsLost[2] = 0;
 			}
 			if (difftime(timeNow,pingTime) > 60 && !repeaterList[repPos].sending[slot]){
 				syslog(LOG_NOTICE,"PING timeout on DMR port %i repeater %s, exiting thread",baseDmrPort + repPos,repeaterList[repPos].callsign);
