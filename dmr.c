@@ -105,7 +105,7 @@ struct allow checkTalkGroup(int dstId, int slot, int callType){
 	}
 	toSend.repeater = false;
 	toSend.sMaster = false;
-	syslog(LOG_NOTICE,"Talk group %i not allowed on slot",dstId,slot);
+	syslog(LOG_NOTICE,"Talk group %i not allowed on slot %i",dstId,slot);
 	return toSend;
 }
 
