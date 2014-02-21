@@ -197,6 +197,9 @@ void *sMasterThread(){
 						}
 					}
 				}
+				else{
+					syslog(LOG_NOTICE,"[sMaster]Incomming traffic on slot %i, but DMR not IDLE",slot);
+				}
 			}
 		}
 		else{

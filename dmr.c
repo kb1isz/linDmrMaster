@@ -187,6 +187,7 @@ void *dmrListener(void *f){
 							if (sMaster.online){
 								sendto(sMaster.sockfd,webUserInfo,strlen(webUserInfo),0,(struct sockaddr *)&sMaster.address,sizeof(sMaster.address));
 							}
+							//if (dstId == echoId) echoTest()
 							toSend = checkTalkGroup(dstId,slot,callType);
 							if (toSend.repeater == false){
 								block[slot] = true;
@@ -234,6 +235,9 @@ void *dmrListener(void *f){
 							sendto(sMaster.sockfd,sMasterFrame,103,0,(struct sockaddr *)&sMaster.address,sizeof(sMaster.address));
 						}
 					}
+				}
+				else{
+					syslog(LOG_NOTICE,"[%i-%s]Incomming traffic on slot %i, but DMR not IDLE",baseDmrPort + repPos,repeaterList[repPos].callsign,slot);
 				}
 			}
 			else{
