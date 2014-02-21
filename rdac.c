@@ -51,6 +51,17 @@ void delRdacRepeater(struct sockaddr_in address){
 			rdacList[i].address.sin_addr.s_addr = 0;
 			rdacList[i].rdacOnline = false;
 			rdacList[i].rdacUpdated = false;
+			rdacList[i].dmrOnline = false;
+			rdacList[i].id = 0;
+			rdacList[i].lastPTPPConnect = 0;
+			rdacList[i].lastDMRConnect = 0;
+			rdacList[i].lastRDACConnect = 0;
+			memset(rdacList[i].callsign,0,17);
+			memset(rdacList[i].txFreq,0,10);
+			memset(rdacList[i].shift,0,7);
+			memset(rdacList[i].hardware,0,11);
+			memset(rdacList[i].firmware,0,14);
+			memset(rdacList[i].mode,0,4);
 			return;
 		} 
 	}
