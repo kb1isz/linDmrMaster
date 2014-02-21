@@ -109,6 +109,58 @@ struct allow checkTalkGroup(int dstId, int slot, int callType){
 	return toSend;
 }
 
+void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in address){
+	struct frame{
+		unsigned char buf[VFRAMESIZE];
+	};
+	struct frame record[2000];
+	long frames = 0;
+	int n,rc,i;
+	int sync;
+	fd_set fdMaster;
+	struct timeval timeout;
+	struct sockaddr_in cliaddr;
+	socklen_t len;
+	bool timedOut = false;
+	
+	
+	FD_ZERO(&fdMaster);
+	
+	memcpy(record[frames].buf,buffer,VFRAMESIZE);
+	len = sizeof(cliaddr);
+	do{
+		FD_SET(sockfd, &fdMaster);
+		timeout.tv_sec = 1;
+		timeout.tv_usec = 0;
+		if (rc = select(sockfd+1, &fdMaster, NULL, NULL, &timeout) == -1) { 
+			close(sockfd);
+			pthread_exit(NULL);
+        }
+		if (FD_ISSET(sockfd,&fdMaster)) {
+			n = recvfrom(sockfd,buffer,VFRAMESIZE,0,(struct sockaddr *)&cliaddr,&len);
+		
+			if (n>2){
+				sync = buffer[SYNC_OFFSET1] << 8 | buffer[SYNC_OFFSET2];
+				if (frames < 2000){
+					frames++;
+					memcpy(record[frames].buf,buffer,VFRAMESIZE);
+				} 
+			}
+		}
+		else{
+			timedOut = true;
+		}
+	}while (sync != VCALLEND || timedOut == false);
+	sleep(1);
+	syslog(LOG_NOTICE,"Playing echo back");
+	
+	for (i=0;i<=frames;i++){
+		sendto(sockfd,record[i].buf,VFRAMESIZE,0,(struct sockaddr *)&address,sizeof(address));
+		sync = record[i].buf[SYNC_OFFSET1] << 8 | record[i].buf[SYNC_OFFSET2];
+		if (sync != ISSYNC) usleep(60000);
+	}
+}
+
 void *dmrListener(void *f){
 	int sockfd,n,i,rc;
 	struct sockaddr_in servaddr,cliaddr;
@@ -187,7 +239,12 @@ void *dmrListener(void *f){
 							if (sMaster.online){
 								sendto(sMaster.sockfd,webUserInfo,strlen(webUserInfo),0,(struct sockaddr *)&sMaster.address,sizeof(sMaster.address));
 							}
-							//if (dstId == echoId) echoTest()
+							if (dstId == echoId){
+								syslog(LOG_NOTICE,"[%i-%s]Echo test started on slot %i src %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId);
+								echoTest(buffer,sockfd,repeaterList[repPos].address);
+								repeaterList[repPos].sending[slot] = false;
+								break;
+							} 
 							toSend = checkTalkGroup(dstId,slot,callType);
 							if (toSend.repeater == false){
 								block[slot] = true;
