@@ -88,7 +88,6 @@ struct allow checkTalkGroup(int dstId, int slot, int callType){
 				toSend.repeater = true;
 				toSend.sMaster = false;
 				if (repTS1List[i][0] != repTS1List[i][1]) toSend.isRange = true;
-				syslog(LOG_NOTICE,"***DEBUG***allowed is here dst %i rep1 %i rep2 %i slot %i",dstId,repTS1List[i][0],repTS1List[i][1],slot);
 				return toSend;
 			}
 		}

@@ -26,7 +26,7 @@ int rdacPort = 50002;
 int baseRdacPort = 50200;
 int maxRepeaters = 20;
 int echoId = 9990;
-char version[5] = "0.5";
+char version[5] = "0.9";
 
 struct repeater repeaterList[100] = {0};
 struct repeater emptyRepeater = {0};
@@ -504,7 +504,7 @@ int loadTalkGroups(){
 			//Below code just to show the loaded talkgroups in syslog
 			syslog(LOG_NOTICE,"sMaster talk groups TS1");
 			if (master.sMasterTS1GroupCount>0){
-				for (i=0;i<master.sMasterTS1GroupCount;i++){
+				for (i=0;i<=master.sMasterTS1GroupCount;i++){
 					syslog(LOG_NOTICE,"(%i) %i - %i",i,sMasterTS1List[i][0],sMasterTS1List[i][1]);
 				}
 			}
@@ -513,7 +513,7 @@ int loadTalkGroups(){
 					
 			syslog(LOG_NOTICE,"sMaster talk groups TS2");
 			if (master.sMasterTS2GroupCount>0){
-				for (i=0;i<master.sMasterTS2GroupCount;i++){
+				for (i=0;i<=master.sMasterTS2GroupCount;i++){
 					syslog(LOG_NOTICE,"(%i) %i - %i",i,sMasterTS2List[i][0],sMasterTS2List[i][1]);
 				}
 			}
@@ -522,7 +522,7 @@ int loadTalkGroups(){
 
 			syslog(LOG_NOTICE,"repTS1 talk groups");
 			if (master.repTS1GroupCount>0){
-				for (i=0;i<master.repTS1GroupCount;i++){
+				for (i=0;i<=master.repTS1GroupCount;i++){
 					syslog(LOG_NOTICE,"(%i) %i - %i",i,repTS1List[i][0],repTS1List[i][1]);
 				}
 			}
@@ -530,7 +530,7 @@ int loadTalkGroups(){
 				
 			syslog(LOG_NOTICE,"repTS2 talk groups");
 			if (master.repTS2GroupCount>0){
-				for (i=0;i<master.repTS2GroupCount;i++){
+				for (i=0;i<=master.repTS2GroupCount;i++){
 					syslog(LOG_NOTICE,"(%i) %i - %i",i,repTS2List[i][0],repTS2List[i][1]);
 				}
 			}
