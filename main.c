@@ -405,7 +405,6 @@ int loadTalkGroups(){
 				}
 				master.sMasterTS1GroupCount++;
 				while (lineread = strtok(NULL,",")){
-					master.sMasterTS1GroupCount++;
 					if (master.sMasterTS1GroupCount > size) sMasterTS1List = realloc(sMasterTS1List, (sizeof *sMasterTS1List) * master.sMasterTS1GroupCount);
 					if (strstr(lineread,"**")){ //If ** in talkgroup, this is a range of 100
 						sMasterTS1List[master.sMasterTS1GroupCount][0] = atoi(lineread) * 100;
@@ -417,6 +416,7 @@ int loadTalkGroups(){
 						sMasterTS1List[master.sMasterTS1GroupCount][1] = atoi(lineread);
 						sprintf(master.announcedCC1,"%s%4s",master.announcedCC1,lineread);
 					}
+					master.sMasterTS1GroupCount++;
 				}
 			}
 			if (master.sMasterTS1GroupCount < 10){  //If not 10 talkgroups for TS1, fill with 0 to report to sMaster
@@ -438,7 +438,6 @@ int loadTalkGroups(){
 				}
 				master.sMasterTS2GroupCount++;
 				while (lineread = strtok(NULL,",")){
-					master.sMasterTS2GroupCount++;
 					if (master.sMasterTS2GroupCount > size) sMasterTS2List = realloc(sMasterTS2List, (sizeof *sMasterTS2List) * master.sMasterTS2GroupCount);
 					if (strstr(lineread,"**")){//If ** in talkgroup, this is a range of 100
 						sMasterTS2List[master.sMasterTS2GroupCount][0] = atoi(lineread) * 100;
@@ -450,6 +449,7 @@ int loadTalkGroups(){
 						sMasterTS2List[master.sMasterTS2GroupCount][1] = atoi(lineread);
 						sprintf(master.announcedCC2,"%s%4s",master.announcedCC2,lineread);
 					}
+					master.sMasterTS2GroupCount++;
 				}
 			}
 			if (master.sMasterTS2GroupCount < 10){//If not 10 talkgroups for TS2, fill with 0 to report to sMaster
@@ -469,7 +469,6 @@ int loadTalkGroups(){
 				}
 				master.repTS1GroupCount++;
 				while (lineread = strtok(NULL,",")){
-					master.repTS1GroupCount++;
 					if (master.repTS1GroupCount > size) repTS1List = realloc(repTS1List, (sizeof *repTS1List) * master.repTS1GroupCount);
 					if (strstr(lineread,"**")){//If ** in talkgroup, this is a range of 100
 						repTS1List[master.repTS1GroupCount][0] = atoi(lineread) * 100;
@@ -479,6 +478,7 @@ int loadTalkGroups(){
 						repTS1List[master.repTS1GroupCount][0] = atoi(lineread);
 						repTS1List[master.repTS1GroupCount][1] = atoi(lineread);
 					}
+					master.repTS1GroupCount++;
 				}
 			}
 
@@ -493,7 +493,6 @@ int loadTalkGroups(){
 				}
 				master.repTS2GroupCount++;
 				while (lineread = strtok(NULL,",")){
-					master.repTS2GroupCount++;
 					if (master.repTS2GroupCount > size) repTS2List = realloc(repTS2List, (sizeof *repTS2List) * master.repTS2GroupCount);
 					if (strstr(lineread,"**")){
 						repTS2List[master.repTS2GroupCount][0] = atoi(lineread) * 100;
@@ -503,6 +502,7 @@ int loadTalkGroups(){
 						repTS2List[master.repTS2GroupCount][0] = atoi(lineread);
 						repTS2List[master.repTS2GroupCount][1] = atoi(lineread);
 					}
+					master.repTS2GroupCount++;
 				}
 			}
 			//Below code just to show the loaded talkgroups in syslog
