@@ -62,7 +62,7 @@ struct allow checkTalkGroup(int dstId, int slot, int callType){
 	toSend.isRange = false;
 	//First check sMaster talk groups. All sMaster talkgroups apply to the repeaters also
 	if (slot == 1){
-		for(i=0;i<=master.sMasterTS1GroupCount;i++){
+		for(i=0;i<master.sMasterTS1GroupCount;i++){
 			if (dstId >= sMasterTS1List[i][0] && dstId <= sMasterTS1List[i][1]){
 				toSend.repeater = true;
 				toSend.sMaster = true;
@@ -72,7 +72,7 @@ struct allow checkTalkGroup(int dstId, int slot, int callType){
 		}
 	}
 	else{
-		for(i=0;i<=master.sMasterTS2GroupCount;i++){
+		for(i=0;i<master.sMasterTS2GroupCount;i++){
 			if (dstId >= sMasterTS2List[i][0] && dstId <= sMasterTS2List[i][1]){
 				toSend.repeater = true;
 				toSend.sMaster = true;
@@ -83,7 +83,7 @@ struct allow checkTalkGroup(int dstId, int slot, int callType){
 	}
 	
 	if (slot == 1){
-		for(i=0;i<=master.repTS1GroupCount;i++){
+		for(i=0;i<master.repTS1GroupCount;i++){
 			if (dstId >= repTS1List[i][0] && dstId <= repTS1List[i][1]){
 				toSend.repeater = true;
 				toSend.sMaster = false;
@@ -93,7 +93,7 @@ struct allow checkTalkGroup(int dstId, int slot, int callType){
 		}
 	}
 	else{
-		for(i=0;i<=master.repTS2GroupCount;i++){
+		for(i=0;i<master.repTS2GroupCount;i++){
 			if (dstId >= repTS2List[i][0] && dstId <= repTS2List[i][1]){
 				toSend.repeater = true;
 				toSend.sMaster = false;
