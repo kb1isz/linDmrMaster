@@ -108,7 +108,7 @@ struct allow checkTalkGroup(int dstId, int slot, int callType){
 	return toSend;
 }
 
-void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in address){
+void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in address, int srcId){
 	struct frame{
 		unsigned char buf[VFRAMESIZE];
 	};
@@ -121,11 +121,16 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 	struct sockaddr_in cliaddr;
 	socklen_t len;
 	bool timedOut = false;
+	FILE *recordFile;
+	char fileName[30];
+	sprintf(fileName,"%i.record",srcId);
 	
+	recordFile = fopen(fileName,"wb");
 	
 	FD_ZERO(&fdMaster);
 	
 	memcpy(record[frames].buf,buffer,VFRAMESIZE);
+	fwrite(buffer,VFRAMESIZE,1,recordFile);
 	len = sizeof(cliaddr);
 	do{
 		FD_SET(sockfd, &fdMaster);
@@ -143,6 +148,7 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 				if (frames < 2000){
 					frames++;
 					memcpy(record[frames].buf,buffer,VFRAMESIZE);
+					fwrite(buffer,VFRAMESIZE,1,recordFile);
 				} 
 			}
 		}
@@ -150,6 +156,7 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 			timedOut = true;
 		}
 	}while (sync != VCALLEND || timedOut == false);
+	fclose(recordFile);
 	sleep(1);
 	syslog(LOG_NOTICE,"Playing echo back");
 	
@@ -240,7 +247,7 @@ void *dmrListener(void *f){
 							}
 							if (dstId == echoId){
 								syslog(LOG_NOTICE,"[%i-%s]Echo test started on slot %i src %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId);
-								echoTest(buffer,sockfd,repeaterList[repPos].address);
+								echoTest(buffer,sockfd,repeaterList[repPos].address,srcId);
 								repeaterList[repPos].sending[slot] = false;
 								break;
 							} 
