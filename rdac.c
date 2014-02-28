@@ -74,8 +74,12 @@ int setRdacRepeater(struct sockaddr_in address){
 	char SQLQUERY[300];
 	char str[INET_ADDRSTRLEN];
 	
+	inet_ntop(AF_INET, &(address.sin_addr), str, INET_ADDRSTRLEN);
 	for(i=0;i<maxRepeaters;i++){
-		if (rdacList[i].address.sin_addr.s_addr == address.sin_addr.s_addr) return i;
+		if (rdacList[i].address.sin_addr.s_addr == address.sin_addr.s_addr){
+			syslog(LOG_NOTICE,"[%s]Repeater still in RDAC list",str); 
+			return i;
+		}
 	}
 	
 	

@@ -54,6 +54,7 @@ struct allow{
 	bool isRange;
 };
 void delRdacRepeater();
+void delRepeater();
 
 struct allow checkTalkGroup(int dstId, int slot, int callType){
 	struct allow toSend = {0};
@@ -333,9 +334,7 @@ void *dmrListener(void *f){
 			if (difftime(timeNow,pingTime) > 60 && !repeaterList[repPos].sending[slot]){
 				syslog(LOG_NOTICE,"PING timeout on DMR port %i repeater %s, exiting thread",baseDmrPort + repPos,repeaterList[repPos].callsign);
 				syslog(LOG_NOTICE,"Removing repeater from list position %i",repPos);
-				repeaterList[repPos].address.sin_addr.s_addr = 0;
-				repeaterList[repPos].sockfd = 0;
-				repeaterList[repPos].dmrOnline = false;
+				delRepeater(cliaddr);
 				if (repPos + 1 == highestRepeater) highestRepeater--;
 				delRdacRepeater(cliaddr);
 				close(sockfd);

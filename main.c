@@ -131,6 +131,30 @@ int findRepeater(struct sockaddr_in address){
 	return 99;
 }
 
+void delRepeater(struct sockaddr_in address){
+        int i;
+
+        for(i=0;i<maxRepeaters;i++){
+                if (repeaterList[i].address.sin_addr.s_addr == address.sin_addr.s_addr){
+                        repeaterList[i].address.sin_addr.s_addr = 0;
+                        repeaterList[i].rdacOnline = false;
+                        repeaterList[i].rdacUpdated = false;
+                        repeaterList[i].dmrOnline = false;
+                        repeaterList[i].id = 0;
+                        repeaterList[i].lastPTPPConnect = 0;
+                        repeaterList[i].lastDMRConnect = 0;
+                        repeaterList[i].lastRDACConnect = 0;
+                        memset(repeaterList[i].callsign,0,17);
+                        memset(repeaterList[i].txFreq,0,10);
+                        memset(repeaterList[i].shift,0,7);
+                        memset(repeaterList[i].hardware,0,11);
+                        memset(repeaterList[i].firmware,0,14);
+                        memset(repeaterList[i].mode,0,4);
+                        return;
+                }
+        }
+
+}
 
 void serviceListener(port){
 	
