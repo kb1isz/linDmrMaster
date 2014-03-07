@@ -26,6 +26,7 @@ int rdacPort = 50002;
 int baseRdacPort = 50200;
 int maxRepeaters = 20;
 int echoId = 9990;
+int recordId = 9991;
 char version[5] = "0.9";
 
 struct repeater repeaterList[100] = {0};
