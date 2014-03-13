@@ -109,7 +109,7 @@ struct allow checkTalkGroup(int dstId, int slot, int callType){
 	return toSend;
 }
 
-void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in address, int srcId){
+void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in address, int srcId, int repPos){
 	struct frame{
 		unsigned char buf[VFRAMESIZE];
 	};
@@ -123,15 +123,17 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 	socklen_t len;
 	bool timedOut = false;
 	FILE *referenceFile;
-	char fileName[30];
-	//sprintf(fileName,"%i.record",srcId);
+	FILE *recordFile;
+	char fileName[100];
+
+	sprintf(fileName,"%i.record",srcId);
 	
-	//recordFile = fopen(fileName,"wb");
+	recordFile = fopen(fileName,"wb");
 	
 	FD_ZERO(&fdMaster);
 	
 	memcpy(record[frames].buf,buffer,VFRAMESIZE);
-	//fwrite(buffer,VFRAMESIZE,1,recordFile);
+	fwrite(buffer,VFRAMESIZE,1,recordFile);
 	len = sizeof(cliaddr);
 	do{
 		FD_SET(sockfd, &fdMaster);
@@ -149,7 +151,7 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 				if (frames < 2000){
 					frames++;
 					memcpy(record[frames].buf,buffer,VFRAMESIZE);
-					//fwrite(buffer,VFRAMESIZE,1,recordFile);
+					fwrite(buffer,VFRAMESIZE,1,recordFile);
 				} 
 			}
 		}
@@ -157,26 +159,28 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 			timedOut = true;
 		}
 	}while (sync != VCALLEND || timedOut == false);
-	//fclose(recordFile);
+	fclose(recordFile);
 	sleep(1);
-	syslog(LOG_NOTICE,"Playing echo back");
+	syslog(LOG_NOTICE,"Playing echo back for radio %i",srcId);
 	
 	for (i=0;i<=frames;i++){
 		sendto(sockfd,record[i].buf,VFRAMESIZE,0,(struct sockaddr *)&address,sizeof(address));
 		sync = record[i].buf[SYNC_OFFSET1] << 8 | record[i].buf[SYNC_OFFSET2];
 		if (sync != ISSYNC) usleep(60000);
 	}
-	sprintf(fileName,"reference.voice",srcId);
+	sprintf(fileName,"reference_%s.voice",repeaterList[repPos].language);
         if (referenceFile = fopen(fileName,"rb")){
-		syslog(LOG_NOTICE,"Playing reference file");
+		sleep(1);
+		syslog(LOG_NOTICE,"Playing reference file %s",fileName);
 		while (fread(buffer,VFRAMESIZE,1,referenceFile)){
-			buffer[SRC_OFFSET1] = srcId;
-			buffer[SRC_OFFSET2] = srcId >> 8;
-			buffer[SRC_OFFSET3] = srcId >> 16;
 			sendto(sockfd,buffer,VFRAMESIZE,0,(struct sockaddr *)&address,sizeof(address));
+			sync = buffer[SYNC_OFFSET1] << 8 | buffer[SYNC_OFFSET2];
 			if (sync != ISSYNC) usleep(60000);
 		}
 	fclose(referenceFile);
+	}
+	else{
+		syslog(LOG_NOTICE,"reference file %s not found",fileName); 
 	}
 }
 
@@ -260,7 +264,7 @@ void *dmrListener(void *f){
 							}
 							if (dstId == echoId){
 								syslog(LOG_NOTICE,"[%i-%s]Echo test started on slot %i src %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId);
-								echoTest(buffer,sockfd,repeaterList[repPos].address,srcId);
+								echoTest(buffer,sockfd,repeaterList[repPos].address,srcId,repPos);
 								repeaterList[repPos].sending[slot] = false;
 								break;
 							} 

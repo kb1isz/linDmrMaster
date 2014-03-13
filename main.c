@@ -114,6 +114,7 @@ int initRepeater(struct repeater repeaterInfo){
 	sprintf(repeaterList[i].hardware,"%s",repeaterInfo.hardware);
 	sprintf(repeaterList[i].firmware,"%s",repeaterInfo.firmware);
 	sprintf(repeaterList[i].mode,"%s",repeaterInfo.mode);
+	sprintf(repeaterList[i].language,"%s",repeaterInfo.language);
 	syslog(LOG_NOTICE,"Repeater added to list position %i",i);
 	//Highest filled position in the list
 	if (i +1 > highestRepeater) highestRepeater = i + 1;
