@@ -190,7 +190,10 @@ void *dmrListener(void *f){
 	socklen_t len;
 	unsigned char buffer[VFRAMESIZE];
 	unsigned char response[VFRAMESIZE] ={0};
-	int repPos = (intptr_t)f;
+	//int repPos = (intptr_t)f;
+        struct sockInfo* param = (struct sockInfo*) f;
+        int repPos = param->port - baseDmrPort;
+	struct sockaddr_in cliaddrOrg = param->address;
 	int packetType = 0;
 	int sync = 0;
 	int srcId = 0;
@@ -350,9 +353,9 @@ void *dmrListener(void *f){
 			if (difftime(timeNow,pingTime) > 60 && !repeaterList[repPos].sending[slot]){
 				syslog(LOG_NOTICE,"PING timeout on DMR port %i repeater %s, exiting thread",baseDmrPort + repPos,repeaterList[repPos].callsign);
 				syslog(LOG_NOTICE,"Removing repeater from list position %i",repPos);
-				delRepeater(cliaddr);
+				delRepeater(cliaddrOrg);
 				if (repPos + 1 == highestRepeater) highestRepeater--;
-				delRdacRepeater(cliaddr);
+				delRdacRepeater(cliaddrOrg);
 				close(sockfd);
 				pthread_exit(NULL);
 			}

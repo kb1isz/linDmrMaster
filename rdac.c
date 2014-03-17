@@ -62,6 +62,7 @@ void delRdacRepeater(struct sockaddr_in address){
 			memset(rdacList[i].hardware,0,11);
 			memset(rdacList[i].firmware,0,14);
 			memset(rdacList[i].mode,0,4);
+			syslog(LOG_NOTICE,"Deleted repeater in rdac list on pos %i",i);
 			return;
 		} 
 	}
@@ -109,6 +110,7 @@ int setRdacRepeater(struct sockaddr_in address){
 		}
 	}
 	sqlite3_finalize(stmt);
+	syslog(LOG_NOTICE,"Repeater not found in RDAC list, assigning pos %i",i);
 	return i;
 }
 

@@ -151,6 +151,7 @@ void delRepeater(struct sockaddr_in address){
                         memset(repeaterList[i].hardware,0,11);
                         memset(repeaterList[i].firmware,0,14);
                         memset(repeaterList[i].mode,0,4);
+                        syslog(LOG_NOTICE,"Repeater deleted from list pos %i",i);
                         return;
                 }
         }
@@ -259,7 +260,10 @@ void serviceListener(port){
 						syslog(LOG_NOTICE,"DMR request from repeater [%s - %s] already assigned a DMR port, not starting thread",str,repeaterList[repPos].callsign);
 					}
 					else{  //Start a new DMR thread for this repeater
-						pthread_create(&thread, NULL, dmrListener,(void *)repPos);
+                                                struct sockInfo *param = malloc(sizeof(struct sockInfo));
+                                                param->address = cliaddr;
+                                                param->port = redirectPort;
+						pthread_create(&thread, NULL, dmrListener,param);
 					}
 					sendto(sockfd,response,n+4,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
 					syslog(LOG_NOTICE,"Re-directed repeater [%s - %s] to DMR port %i",str,repeaterList[repPos].callsign,redirectPort);
