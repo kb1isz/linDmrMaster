@@ -33,10 +33,35 @@ sqlite3 *openDatabase(){
 	return db;
 }
 
-bool isTableExists(sqlite3 *db, char *table){
+bool isFieldExisting(sqlite3 *db, char *table, char *field){
+	sqlite3_stmt *stmt;
+	char SQLQUERY[200];
+
+	syslog(LOG_NOTICE,"Database, checking column '%s' in table '%s'",field,table);
+	sprintf(SQLQUERY,"PRAGMA table_info(%s)",table);
+	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
+		while (sqlite3_step(stmt) == SQLITE_ROW){
+			if (strcmp(sqlite3_column_text(stmt,1),field) == 0){
+				sqlite3_finalize(stmt);
+				return true;
+			}
+		}
+	}
+	else{
+		syslog(LOG_NOTICE,"Database error: %s",sqlite3_errmsg(db));
+		sqlite3_finalize(stmt);
+		return false;
+	}
+		sqlite3_finalize(stmt);
+		syslog(LOG_NOTICE,"field %s doesn't exist",field);
+		return false;
+}
+
+bool isTableExisting(sqlite3 *db, char *table){
 	sqlite3_stmt *stmt;
 	char SQLQUERY[200];
 	
+	syslog(LOG_NOTICE,"Database, checking table '%s'",table);
 	sprintf(SQLQUERY,"SELECT count(*) FROM sqlite_master WHERE type='table' AND name = '%s'",table);
 	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
 		if (sqlite3_step(stmt) == SQLITE_ROW){
@@ -61,7 +86,7 @@ int initDatabase(sqlite3 *db){
 	char SQLQUERY[400];
 	bool neededToCreate = false;
 	
-	if (!isTableExists(db,"master")){
+	if (!isTableExisting(db,"master")){
 		sprintf(SQLQUERY,"CREATE TABLE master (repTS1 VARCHAR(100) default '',repTS2 VARCHAR(100) default '',sMasterTS1 VARCHAR(100) default '',sMasterTS2 VARCHAR(100) default '', timeBase INTEGER default 60, servicePort int default 50000, rdacPort int default 50002,dmrPort int default 50001, baseDmrPort int default 50100, baseRdacPort int default 50200, maxRepeaters int default 20, echoId int default 9990)");
 		if (sqlite3_exec(db,SQLQUERY,0,0,0) == 0){
 			neededToCreate = true;
@@ -79,7 +104,7 @@ int initDatabase(sqlite3 *db){
 			return 0;
 		}
 	}
-	if (!isTableExists(db,"sMaster")){
+	if (!isTableExisting(db,"sMaster")){
 		sprintf(SQLQUERY,"CREATE TABLE sMaster (ownName VARCHAR(100) default '',ownCountryCode VARCHAR(5) default '',ownRegion VARCHAR(2) default '',sMasterIp VARCHAR(100) default '', sMasterPort VARCHAR(5) default '62010')");
 		if (sqlite3_exec(db,SQLQUERY,0,0,0) == 0){
 			neededToCreate = true;
@@ -97,8 +122,8 @@ int initDatabase(sqlite3 *db){
 			return 0;
 		}
 	}
-	if (!isTableExists(db,"repeaters")){
-		sprintf(SQLQUERY,"CREATE TABLE repeaters (repeaterId INTEGER default 0 ,callsign VARCHAR(10) default '',txFreq VARCHAR(10) default '',shift VARCHAR(7) default '', hardware VARCHAR(11) default '', firmware VARCHAR(12) default '', mode VARCHAR(4) default '', currentAddress INTEGER default 0, timeStamp varchar(20) default '1970-1-1 00:00:00', ipAddress VARCHAR(50) default '')");
+	if (!isTableExisting(db,"repeaters")){
+		sprintf(SQLQUERY,"CREATE TABLE repeaters (repeaterId INTEGER default 0 ,callsign VARCHAR(10) default '',txFreq VARCHAR(10) default '',shift VARCHAR(7) default '', hardware VARCHAR(11) default '', firmware VARCHAR(12) default '', mode VARCHAR(4) default '', currentAddress INTEGER default 0, timeStamp varchar(20) default '1970-1-1 00:00:00', ipAddress VARCHAR(50) default '',language VARCHAR(50) default 'english')");
 		if (sqlite3_exec(db,SQLQUERY,0,0,0) == 0){
 			neededToCreate = true;
 			syslog(LOG_NOTICE,"Table repeater created");
@@ -108,5 +133,18 @@ int initDatabase(sqlite3 *db){
 			return 0;
 		}
 	}
+	
+	//check for new fields added later in development
+	if (!isFieldExisting(db,"repeaters","language")){
+		sprintf(SQLQUERY,"ALTER TABLE repeaters ADD COLUMN language varchar(50) default 'english'");
+		if (sqlite3_exec(db,SQLQUERY,0,0,0) == 0){
+			syslog(LOG_NOTICE,"field language in repeater created");
+		}
+		else{
+			syslog(LOG_NOTICE,"Database error: %s",sqlite3_errmsg(db));
+			return 0;
+		}
+	}
+		
 	if (neededToCreate) return 2; else return 1;
 }
