@@ -110,6 +110,7 @@ extern int rdacPort;
 extern int baseRdacPort;
 extern int maxRepeaters;
 extern int echoId;
+extern int rrsGpsId;
 extern state dmrState[3];
 extern int (*sMasterTS1List)[2];
 extern int (*sMasterTS2List)[2];

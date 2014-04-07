@@ -22,19 +22,19 @@
 #define NUMSLOTS 2                                        //DMR IS 2 SLOT
 #define SLOT1 4369                                        //HEX 1111
 #define SLOT2 8738                                        //HEX 2222
-#define VCALL 4369                                        //HEX 1111
-#define DCALL 26214                                        //HEX 6666
-#define ISSYNC 61166										//HEX EEEE
-#define VCALLEND 8738										//HEX 2222
+//#define VCALL 4369                                        //HEX 1111
+//#define DCALL 26214                                        //HEX 6666
+//#define ISSYNC 61166										//HEX EEEE
+//#define VCALLEND 8738										//HEX 2222
 //#define CALL 2
 //#define CALLEND 3
-#define PTYPE_ACTIVE1 2                                        
-#define PTYPE_END1 3
-#define PTYPE_ACTIVE2 66
-#define PTYPE_END2 67
+//#define PTYPE_ACTIVE1 2                                        
+//#define PTYPE_END1 3
+//#define PTYPE_ACTIVE2 66
+//#define PTYPE_END2 67
 #define VFRAMESIZE 72                                        //UDP PAYLOAD SIZE OF REPEATER VOICE/DATA TRAFFIC
-#define SYNC_OFFSET1 18                                        //UDP OFFSETS FOR VARIOUS BYTES IN THE DATA STREAM
-#define SYNC_OFFSET2 19                                        //
+//#define SYNC_OFFSET1 18                                        //UDP OFFSETS FOR VARIOUS BYTES IN THE DATA STREAM
+//#define SYNC_OFFSET2 19                                        //
 //#define SYNC_OFFSET3 18                                        //Look for EEEE
 //#define SYNC_OFFSET4 19                                        //Look for EEEE
 #define SLOT_OFFSET1 16                                        //        
@@ -47,6 +47,11 @@
 #define DST_OFFSET2 65
 #define DST_OFFSET3 66
 #define TYP_OFFSET1 62
+
+#define SLOT_TYPE_OFFSET1 18
+#define SLOT_TYPE_OFFSET2 19
+#define FRAME_TYPE_OFFSET1 22
+#define FRAME_TYPE_OFFSET2 23
 
 struct allow{
 	bool repeater;
@@ -116,7 +121,7 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 	struct frame record[2000];
 	long frames = 0;
 	int n,rc,i;
-	int sync;
+	int slotType=0,frameType=0;
 	fd_set fdMaster;
 	struct timeval timeout;
 	struct sockaddr_in cliaddr;
@@ -147,7 +152,8 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 			n = recvfrom(sockfd,buffer,VFRAMESIZE,0,(struct sockaddr *)&cliaddr,&len);
 		
 			if (n>2){
-				sync = buffer[SYNC_OFFSET1] << 8 | buffer[SYNC_OFFSET2];
+				slotType = buffer[SLOT_TYPE_OFFSET1] << 8 | buffer[SLOT_TYPE_OFFSET2];
+				frameType = buffer[FRAME_TYPE_OFFSET1] << 8 | buffer[FRAME_TYPE_OFFSET2];
 				if (frames < 2000){
 					frames++;
 					memcpy(record[frames].buf,buffer,VFRAMESIZE);
@@ -158,15 +164,16 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 		else{
 			timedOut = true;
 		}
-	}while (sync != VCALLEND || timedOut == false);
+	}while ((slotType != 0x2222 && frameType != 0xaaaa) || timedOut == false);
 	fclose(recordFile);
 	sleep(1);
 	syslog(LOG_NOTICE,"Playing echo back for radio %i",srcId);
 	
 	for (i=0;i<=frames;i++){
 		sendto(sockfd,record[i].buf,VFRAMESIZE,0,(struct sockaddr *)&address,sizeof(address));
-		sync = record[i].buf[SYNC_OFFSET1] << 8 | record[i].buf[SYNC_OFFSET2];
-		if (sync != ISSYNC) usleep(60000);
+		slotType = record[i].buf[SLOT_TYPE_OFFSET1] << 8 | record[i].buf[SLOT_TYPE_OFFSET2];
+		frameType = record[i].buf[FRAME_TYPE_OFFSET1] << 8 | record[i].buf[FRAME_TYPE_OFFSET2];
+		if (slotType != 0xeeee && frameType != 0x1111) usleep(60000);
 	}
 	sprintf(fileName,"reference_%s.voice",repeaterList[repPos].language);
         if (referenceFile = fopen(fileName,"rb")){
@@ -174,8 +181,9 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 		syslog(LOG_NOTICE,"Playing reference file %s",fileName);
 		while (fread(buffer,VFRAMESIZE,1,referenceFile)){
 			sendto(sockfd,buffer,VFRAMESIZE,0,(struct sockaddr *)&address,sizeof(address));
-			sync = buffer[SYNC_OFFSET1] << 8 | buffer[SYNC_OFFSET2];
-			if (sync != ISSYNC) usleep(60000);
+		slotType = record[i].buf[SLOT_TYPE_OFFSET1] << 8 | record[i].buf[SLOT_TYPE_OFFSET2];
+		frameType = record[i].buf[FRAME_TYPE_OFFSET1] << 8 | record[i].buf[FRAME_TYPE_OFFSET2];
+		if (slotType != 0xeeee && frameType != 0x1111) usleep(60000);
 		}
 	fclose(referenceFile);
 	}
@@ -191,11 +199,12 @@ void *dmrListener(void *f){
 	unsigned char buffer[VFRAMESIZE];
 	unsigned char response[VFRAMESIZE] ={0};
 	//int repPos = (intptr_t)f;
-        struct sockInfo* param = (struct sockInfo*) f;
-        int repPos = param->port - baseDmrPort;
+	struct sockInfo* param = (struct sockInfo*) f;
+	int repPos = param->port - baseDmrPort;
 	struct sockaddr_in cliaddrOrg = param->address;
 	int packetType = 0;
-	int sync = 0;
+	int frameType = 0;
+	int slotType = 0;
 	int srcId = 0;
 	int dstId = 0;
 	int callType = 0;
@@ -251,11 +260,14 @@ void *dmrListener(void *f){
 				slot = buffer[SLOT_OFFSET1] / 16;
 				if (dmrState[slot] == IDLE || repeaterList[repPos].sending[slot]){
 					packetType = buffer[PTYPE_OFFSET];
-					sync = buffer[SYNC_OFFSET1] << 8 | buffer[SYNC_OFFSET2];
+					slotType = buffer[SLOT_TYPE_OFFSET1] << 8 | buffer[SLOT_TYPE_OFFSET2];
+					frameType = buffer[FRAME_TYPE_OFFSET1] << 8 | buffer[FRAME_TYPE_OFFSET2];
 					switch (packetType){
 				
-						case 0x01:
-						if (sync == VCALL && dmrState[slot] != VOICE && block[slot] == false){
+						case 0x02:
+						if (slotType == 0xeeee && frameType == 0x1111 && dmrState[slot] != VOICE && block[slot] == false){ //Hytera voice sync packet
+							//Sync packet is send before Voice LC header and every time the embedded LC (4 packets) in a voice superframe has been send
+							//When voice call starts, this is the first packet where we can see src and dst)
 							sMasterFrame[98] = slot;
 							srcId = buffer[SRC_OFFSET3] << 16 | buffer[SRC_OFFSET2] << 8 | buffer[SRC_OFFSET1];
 							dstId = buffer[DST_OFFSET3] << 16 | buffer[DST_OFFSET2] << 8 | buffer[DST_OFFSET1];
@@ -284,20 +296,28 @@ void *dmrListener(void *f){
 							}
 							dmrState[slot] = VOICE;
 							syslog(LOG_NOTICE,"[%i-%s]Voice call started on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
-							break;
+							//break;
 						}
-						if (sync == DCALL && dmrState[slot] != DATA){
+						break;
+						
+						case 0x01:
+						if (slotType == 0x3333 && frameType == 0xaaaa && dmrState[slot] != DATA){  //CSBK (first slot type for data where we can see src and dst)
 							srcId = buffer[SRC_OFFSET3] << 16 | buffer[SRC_OFFSET2] << 8 | buffer[SRC_OFFSET1];
 							dstId = buffer[DST_OFFSET3] << 16 | buffer[DST_OFFSET2] << 8 | buffer[DST_OFFSET1];
 							callType = buffer[TYP_OFFSET1];
 							toSend.sMaster = false;
+							if (dstId == rrsGpsId) toSend.repeater = false;
+						}
+						break;
+						
+						if (slotType == 0x4444 && frameType == 0xaaaa && dmrState[slot]){  //Data header
 							syslog(LOG_NOTICE,"[%i-%s]Data on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
 							break;
 						}
 						break;
-				
+						
 						case 0x03:
-						if (sync == VCALLEND){
+						if (slotType == 0x2222 && frameType == 0xaaaa){  //Terminator with LC
 							dmrState[slot] = IDLE;
 							repeaterList[repPos].sending[slot] = false;
 							syslog(LOG_NOTICE,"[%i-%s]Voice call ended on slot %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot);
