@@ -308,7 +308,7 @@ void *dmrListener(void *f){
 					}
 					if (!block[slot]){
 						for (i=0;i<highestRepeater;i++){
-							if (repeaterList[i].address.sin_addr.s_addr !=0 && !repeaterList[i].sending[slot]){
+							if (repeaterList[i].address.sin_addr.s_addr !=0 && repeaterList[i].address.sin_addr.s_addr != cliaddrOrg.sin_addr.s_addr){
 								sendto(repeaterList[i].sockfd,buffer,n,0,(struct sockaddr *)&repeaterList[i].address,sizeof(repeaterList[i].address));
 							}
 						}
