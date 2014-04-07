@@ -381,8 +381,8 @@ int getMasterInfo(){
 		sqlite3_finalize(stmt);
 		return 0;
 	}
-	syslog(LOG_NOTICE,"ServicePort %i rdacPort %i dmrPort %i baseDmrPort %i maxRepeaters %i echoId %i",
-	servicePort,rdacPort,dmrPort,baseDmrPort,maxRepeaters-1,echoId);
+	syslog(LOG_NOTICE,"ServicePort %i rdacPort %i dmrPort %i baseDmrPort %i baseRdacPort %i maxRepeaters %i echoId %i rrsGpsId",
+	servicePort,rdacPort,dmrPort,baseDmrPort,baseRdacPort,maxRepeaters-1,echoId,rrsGpsId);
 	if (maxRepeaters > 98){
 		syslog(LOG_NOTICE,"maxRepeaters exceeded 98, quiting application");
 		sqlite3_finalize(stmt);
