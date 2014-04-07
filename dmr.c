@@ -181,9 +181,9 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 		syslog(LOG_NOTICE,"Playing reference file %s",fileName);
 		while (fread(buffer,VFRAMESIZE,1,referenceFile)){
 			sendto(sockfd,buffer,VFRAMESIZE,0,(struct sockaddr *)&address,sizeof(address));
-		slotType = record[i].buf[SLOT_TYPE_OFFSET1] << 8 | record[i].buf[SLOT_TYPE_OFFSET2];
-		frameType = record[i].buf[FRAME_TYPE_OFFSET1] << 8 | record[i].buf[FRAME_TYPE_OFFSET2];
-		if (slotType != 0xeeee && frameType != 0x1111) usleep(60000);
+			slotType = buffer[SLOT_TYPE_OFFSET1] << 8 | buffer[SLOT_TYPE_OFFSET2];
+			frameType = buffer[FRAME_TYPE_OFFSET1] << 8 | buffer[FRAME_TYPE_OFFSET2];
+			if (slotType != 0xeeee && frameType != 0x1111) usleep(60000);
 		}
 	fclose(referenceFile);
 	}
@@ -307,8 +307,8 @@ void *dmrListener(void *f){
 							callType = buffer[TYP_OFFSET1];
 							toSend.sMaster = false;
 							if (dstId == rrsGpsId) toSend.repeater = false;
+							break;
 						}
-						break;
 						
 						if (slotType == 0x4444 && frameType == 0xaaaa && dmrState[slot]){  //Data header
 							syslog(LOG_NOTICE,"[%i-%s]Data on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
