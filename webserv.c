@@ -61,7 +61,7 @@ void *webServerListener(){
 
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    servaddr.sin_addr.s_addr = inet_addr("0.0.0.0");
     servaddr.sin_port        = htons(SERVER_PORT);
 
 	setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));

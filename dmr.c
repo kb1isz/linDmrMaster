@@ -317,7 +317,7 @@ void *dmrListener(void *f){
 						break;
 						
 						case 0x03:
-						if (slotType == 0x2222 && frameType == 0xaaaa){  //Terminator with LC
+						if (slotType == 0x2222){  //Terminator with LC
 							dmrState[slot] = IDLE;
 							repeaterList[repPos].sending[slot] = false;
 							syslog(LOG_NOTICE,"[%i-%s]Voice call ended on slot %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot);
