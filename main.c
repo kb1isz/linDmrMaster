@@ -582,7 +582,7 @@ int main(int argc, char**argv)
 {
 	
 	// Our process ID and Session ID
-	/*pid_t pid,sid;
+	pid_t pid,sid;
 	
 	printf("Becoming a daemon...\n");
 	// Fork off the parent process
@@ -598,10 +598,10 @@ int main(int argc, char**argv)
 	
 	// Change the file mode mask 
     umask(0);
-    */
+    
 	setlogmask (LOG_UPTO (LOG_NOTICE));
 	openlog("Master-server", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-    /* 
+     
 	// Create a new SID for the child process 
     sid = setsid();
     if (sid < 0) {
@@ -613,7 +613,7 @@ int main(int argc, char**argv)
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);	
-	*/
+	
 	pthread_t thread;
 	int port;
 	int dbInit;
