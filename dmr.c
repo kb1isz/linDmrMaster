@@ -312,18 +312,24 @@ void *dmrListener(void *f){
 						
 						if (slotType == 0x4444){  //Data header
 							syslog(LOG_NOTICE,"[%i-%s]Data on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
-							//dmrState[slot] = DATA;
+							dmrState[slot] = DATA;
+							repeaterList[repPos].sending[slot] = true;
+							//here get blocks to follow
 							break;
 						}
 						
-						if (slotType == 0x5555){ // 1/2 rate data continuation
+						if (slotType == 0x5555 && dmrState[slot] != DATA){ // 1/2 rate data continuation
+							//put idle when blocks to follow equals
 							dmrState[slot] = IDLE;
-							syslog(LOG_NOTICE,"[%i-%s]1/2 data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+							repeaterList[repPos].sending[slot] = false;
+							syslog(LOG_NOTICE,"[%i-%s]1/2 rate data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
 							break;
 						}
-						if (slotType == 0x6666){ // 3/4 rate data continuation
-							syslog(LOG_NOTICE,"[%i-%s]3/4 data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+						if (slotType == 0x6666 && dmrState[slot] != DATA){ // 3/4 rate data continuation
+							syslog(LOG_NOTICE,"[%i-%s]3/4 rate data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+							//put idle when blocks to follow equals
 							dmrState[slot] = IDLE;
+							repeaterList[repPos].sending[slot] = false;
 							break;
 						}
 						break;
@@ -369,14 +375,16 @@ void *dmrListener(void *f){
 			}
 			time(&timeNow);
 			if (repeaterList[repPos].sending[1] && dmrState[1] != IDLE){
-				if (dmrState[1] = VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 1",baseDmrPort + repPos,repeaterList[repPos].callsign);
+				if (dmrState[1] == VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 1",baseDmrPort + repPos,repeaterList[repPos].callsign);
+				if (dmrState[1] == DATA) syslog(LOG_NOTICE,"[%i-%s]Data call ended after timeout on slot 1",baseDmrPort + repPos,repeaterList[repPos].callsign);
 				dmrState[1] = IDLE;
 				repeaterList[repPos].sending[1] = false;
 				block[1] = false;
 				syslog(LOG_NOTICE,"[%i-%s]Slot 1 IDLE",baseDmrPort + repPos,repeaterList[repPos].callsign);
 			}
 			if (repeaterList[repPos].sending[2] && dmrState[2] != IDLE){
-				if (dmrState[2] = VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 2",baseDmrPort + repPos,repeaterList[repPos].callsign);
+				if (dmrState[2] == VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 2",baseDmrPort + repPos,repeaterList[repPos].callsign);
+				if (dmrState[2] == DATA) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 2",baseDmrPort + repPos,repeaterList[repPos].callsign);
 				dmrState[2] = IDLE;
 				repeaterList[repPos].sending[2] = false;
 				block[2] = false;
