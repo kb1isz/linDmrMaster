@@ -301,7 +301,7 @@ void *dmrListener(void *f){
 						break;
 						
 						case 0x01:
-						if (slotType == 0x3333 && frameType == 0xaaaa && dmrState[slot] != DATA){  //CSBK (first slot type for data where we can see src and dst)
+						if (slotType == 0x3333 && dmrState[slot] != DATA){  //CSBK (first slot type for data where we can see src and dst)
 							srcId = buffer[SRC_OFFSET3] << 16 | buffer[SRC_OFFSET2] << 8 | buffer[SRC_OFFSET1];
 							dstId = buffer[DST_OFFSET3] << 16 | buffer[DST_OFFSET2] << 8 | buffer[DST_OFFSET1];
 							callType = buffer[TYP_OFFSET1];
@@ -310,7 +310,7 @@ void *dmrListener(void *f){
 							break;
 						}
 						
-						if (slotType == 0x4444 && frameType == 0xaaaa && dmrState[slot]){  //Data header
+						if (slotType == 0x4444){  //Data header
 							syslog(LOG_NOTICE,"[%i-%s]Data on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
 							break;
 						}
