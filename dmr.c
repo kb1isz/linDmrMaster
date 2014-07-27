@@ -312,6 +312,17 @@ void *dmrListener(void *f){
 						
 						if (slotType == 0x4444){  //Data header
 							syslog(LOG_NOTICE,"[%i-%s]Data on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+							dmrState[slot] = DATA;
+							break;
+						}
+						
+						if (slotType == 0x5555 && dmrState[slot] == DATA){ // 1/2 rate data continuation
+							dmrState[slot] = IDLE;
+							syslog(LOG_NOTICE,"[%i-%s]1/2 data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+							break;
+						}
+						if (slotType == 0x6666 && dmrState[slot] == DATA){ // 3/4 rate data continuation
+							syslog(LOG_NOTICE,"[%i-%s]3/4 data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
 							break;
 						}
 						break;
