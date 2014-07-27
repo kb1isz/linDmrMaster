@@ -312,7 +312,7 @@ void *dmrListener(void *f){
 						
 						if (slotType == 0x4444){  //Data header
 							syslog(LOG_NOTICE,"[%i-%s]Data on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
-							dmrState[slot] = DATA;
+							//dmrState[slot] = DATA;
 							break;
 						}
 						
