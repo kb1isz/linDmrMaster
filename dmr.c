@@ -323,6 +323,7 @@ void *dmrListener(void *f){
 						}
 						if (slotType == 0x6666 && dmrState[slot] == DATA){ // 3/4 rate data continuation
 							syslog(LOG_NOTICE,"[%i-%s]3/4 data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+							dmrState[slot] = IDLE;
 							break;
 						}
 						break;
