@@ -29,6 +29,7 @@ bool * convertToBits(unsigned char packet[33]){
 	unsigned char dmrPacket[100];
 	int i,x;
 	
+	memset(dmrPacket,0,100);
 	//bit invert
 	for (i=0;i<33;i=i+2){
 		convPacket[i] = *(packet + i + 1);
