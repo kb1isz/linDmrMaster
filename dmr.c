@@ -313,7 +313,7 @@ void *dmrListener(void *f){
 							break;
 						}
 						
-						memcpy(dmrPacket,buffer+26,33);  //copy the dmr part out of the Hyetra packet
+						memcpy(dmrPacket,buffer+26,34);  //copy the dmr part out of the Hyetra packet
 						bits = convertToBits(dmrPacket); //convert it to bits
 						
 						if (slotType == 0x4444){  //Data header
