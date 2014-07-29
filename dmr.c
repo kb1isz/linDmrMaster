@@ -60,6 +60,7 @@ struct allow{
 };
 void delRdacRepeater();
 void delRepeater();
+bool * convertToBits();
 
 struct allow checkTalkGroup(int dstId, int slot, int callType){
 	struct allow toSend = {0};
@@ -218,6 +219,8 @@ void *dmrListener(void *f){
 	char myId[11];
 	unsigned char webUserInfo[100];
 	//{0x00,0x00,0x00,0x00,0x32,0x30,0x34,0x31,0x39,0x2e,0x37}
+	unsigned char dmrPacket[33];
+	bool *bits;
 
 	syslog(LOG_NOTICE,"DMR thread for port %i started",baseDmrPort + repPos);
 	sockfd=socket(AF_INET,SOCK_DGRAM,0);
@@ -309,6 +312,9 @@ void *dmrListener(void *f){
 							if (dstId == rrsGpsId) toSend.repeater = false;
 							break;
 						}
+						
+						memcpy(dmrPacket,buffer+26,33);  //copy the dmr part out of the Hyetra packet
+						bits = convertToBits(dmrPacket); //convert it to bits
 						
 						if (slotType == 0x4444){  //Data header
 							syslog(LOG_NOTICE,"[%i-%s]Data on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
