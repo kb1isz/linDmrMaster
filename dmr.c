@@ -231,6 +231,8 @@ void *dmrListener(void *f){
 	repeaterList[repPos].sending[2] = false;
 	block[1] = false;
 	block[2] = false;
+	dmrState[1] = IDLE;
+	dmrState[2] = IDLE;
 	//create frame to append after packet for sMaster
 	memset(sMasterFrame,0,103);
 	memcpy(myId,(char*)&repeaterList[repPos].id,sizeof(int));
