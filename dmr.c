@@ -314,13 +314,13 @@ void *dmrListener(void *f){
 							break;
 						}
 						
+						memcpy(dmrPacket,buffer+26,34);  //copy the dmr part out of the Hyetra packet
+						bits = convertToBits(dmrPacket); //convert it to bits
 						
 						if (slotType == 0x4444){  //Data header
 							syslog(LOG_NOTICE,"[%i-%s]Data header on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
 							dmrState[slot] = DATA;
 							repeaterList[repPos].sending[slot] = true;
-							memcpy(dmrPacket,buffer+26,34);  //copy the dmr part out of the Hyetra packet
-							bits = convertToBits(dmrPacket); //convert it to bits
 							decodeBPTC1969(bits);
 							break;
 						}
@@ -330,8 +330,6 @@ void *dmrListener(void *f){
 							dmrState[slot] = IDLE;
 							repeaterList[repPos].sending[slot] = false;
 							syslog(LOG_NOTICE,"[%i-%s]1/2 rate data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
-							memcpy(dmrPacket,buffer+26,34);  //copy the dmr part out of the Hyetra packet
-							bits = convertToBits(dmrPacket); //convert it to bits
 							break;
 						}
 						if (slotType == 0x6666 && dmrState[slot] == DATA){ // 3/4 rate data continuation
@@ -339,8 +337,6 @@ void *dmrListener(void *f){
 							//put idle when blocks to follow equals
 							dmrState[slot] = IDLE;
 							repeaterList[repPos].sending[slot] = false;
-							memcpy(dmrPacket,buffer+26,34);  //copy the dmr part out of the Hyetra packet
-							bits = convertToBits(dmrPacket); //convert it to bits
 							break;
 						}
 						break;
