@@ -323,7 +323,7 @@ void *dmrListener(void *f){
 							syslog(LOG_NOTICE,"[%i-%s]Data header on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
 							dmrState[slot] = DATA;
 							repeaterList[repPos].sending[slot] = true;
-							decodeBPTC1969(bits);
+							//decodeBPTC1969(bits);
 							break;
 						}
 						
