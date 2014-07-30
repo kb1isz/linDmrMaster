@@ -35,6 +35,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
+#include <math.h>
 
 struct repeater{
 	struct sockaddr_in address;
