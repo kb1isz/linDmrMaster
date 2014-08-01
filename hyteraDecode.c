@@ -19,21 +19,22 @@
 
 #include "master_server.h"
 
-void decodeHyteraGps(unsigned char data[300]){
+void decodeHyteraGps(int radioId, unsigned char data[300]){
 
+	struct gpsCoordinates gpsData = {0};
 	unsigned char latitude[9],longitude[9];
 	unsigned char speed[4],heading[4];
 
-	memset(latitude,0,9);
-	memset(longitude,0,10);
-	memset(speed,0,4);
-	memset(heading,0,4);
+	//memset(latitude,0,9);
+	//memset(longitude,0,10);
+	//memset(speed,0,4);
+	//memset(heading,0,4);
 
-	memcpy(latitude,data+32,4);
-	memcpy(latitude+4,data+38,4);
-	memcpy(longitude,data+44,9);
-	memcpy(speed,data+57,3);
-	memcpy(heading,data+60,3);
+	memcpy(gpsData.latitude,data+32,4);
+	memcpy(gpsData.latitude+4,data+38,4);
+	memcpy(gpsData.longitude,data+44,9);
+	memcpy(gpsData.speed,data+57,3);
+	memcpy(gpsData.heading,data+60,3);
 
-	syslog(LOG_NOTICE,"Decoded GPS data: LAT(%s) LONG(%s) SPEED(%s) HEADING(%s)",latitude,longitude,speed,heading);
+	syslog(LOG_NOTICE,"Decoded GPS data: LAT(%s) LONG(%s) SPEED(%s) HEADING(%s)",gpsData.latitude,gpsData.longitude,gpsData.speed,gpsData.heading);
 }

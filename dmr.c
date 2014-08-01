@@ -368,7 +368,7 @@ void *dmrListener(void *f){
 								repeaterList[repPos].sending[slot] = false;
 								syslog(LOG_NOTICE,"All data blocks received");
 								printf("--------------------------------------------------------------\n");
-								if(memcmp(decodedString[slot] + 4,gpsString,4) == 0) decodeHyteraGps(decodedString[slot]);
+								if(memcmp(decodedString[slot] + 4,gpsString,4) == 0) decodeHyteraGps(srcId,decodedString[slot]);
 								if(memcmp(decodedString[slot] + 4,gpsCompressedString,4) == 0) syslog(LOG_NOTICE,"GPS DATA COMPRESSED (not decoding)");
 								memset(decodedString[slot],0,300);
 							}

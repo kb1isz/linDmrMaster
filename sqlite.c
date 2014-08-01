@@ -122,11 +122,24 @@ int initDatabase(sqlite3 *db){
 			return 0;
 		}
 	}
+
 	if (!isTableExisting(db,"repeaters")){
 		sprintf(SQLQUERY,"CREATE TABLE repeaters (repeaterId INTEGER default 0 ,callsign VARCHAR(10) default '',txFreq VARCHAR(10) default '',shift VARCHAR(7) default '', hardware VARCHAR(11) default '', firmware VARCHAR(12) default '', mode VARCHAR(4) default '', currentAddress INTEGER default 0, timeStamp varchar(20) default '1970-1-1 00:00:00', ipAddress VARCHAR(50) default '',language VARCHAR(50) default 'english')");
 		if (sqlite3_exec(db,SQLQUERY,0,0,0) == 0){
 			neededToCreate = true;
 			syslog(LOG_NOTICE,"Table repeater created");
+		}
+		else{
+			syslog(LOG_NOTICE,"Database error: %s",sqlite3_errmsg(db));
+			return 0;
+		}
+	}
+
+	if (!isTableExisting(db,"callsigns")){
+		sprintf(SQLQUERY,"CREATE TABLE callsigns (radioId INTEGER default 0, callsign VARCHAR(32) default '', name VARCHAR(32) default '', aprsSuffix VARCHAR(3) default '', aprsBeacon VARCHAR(100) default 'DMR terminal', aprsSymbol INTEGER default 62, hasSendAprs INTEGER default 0, messageStore INTEGER default 1, email VARCHAR(100) default '', login VARCHAR(50) default '', password VARCHAR(50) default '', lastAprsTime INTEGER default 0, madeChange INTEGER default 0, city VARCHAR(32) default '', state VARCHAR(32) default '', country VARCHAR(32) default '', radio VARCHAR(32) default '', homeRepeaterId VARCHAR(32) default '', remarks VARCHAR(32) default '')");
+		if (sqlite3_exec(db,SQLQUERY,0,0,0) == 0){
+			neededToCreate = true;
+			syslog(LOG_NOTICE,"Table callsigns created");
 		}
 		else{
 			syslog(LOG_NOTICE,"Database error: %s",sqlite3_errmsg(db));

@@ -92,6 +92,14 @@ struct sockInfo{
 	int port;
 };
 
+struct gpsCoordinates{
+	int radioId;
+	unsigned char latitude[9];
+	unsigned char longitude[9];
+	unsigned char speed[4];
+	unsigned char heading[4];
+};
+
 typedef enum {VOICE, DATA, IDLE} state;
 
 extern struct repeater repeaterList[100];
