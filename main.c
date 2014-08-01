@@ -584,7 +584,7 @@ int main(int argc, char**argv)
 	// Our process ID and Session ID
 	pid_t pid,sid;
 	
-	printf("Becoming a daemon...\n");
+	/*printf("Becoming a daemon...\n");
 	// Fork off the parent process
 	pid = fork();
     if (pid < 0) {
@@ -597,13 +597,13 @@ int main(int argc, char**argv)
     }
 	
 	// Change the file mode mask 
-    umask(0);
+    umask(0);*/
     
 	setlogmask (LOG_UPTO (LOG_NOTICE));
 	openlog("Master-server", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
      
 	// Create a new SID for the child process 
-    sid = setsid();
+    /*sid = setsid();
     if (sid < 0) {
 		// Log the failure 
 		exit(EXIT_FAILURE);
@@ -612,7 +612,7 @@ int main(int argc, char**argv)
 	// Close out the standard file descriptors 
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
-    close(STDERR_FILENO);	
+    close(STDERR_FILENO);*/
 	
 	pthread_t thread;
 	int port;

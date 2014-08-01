@@ -58,10 +58,20 @@ struct allow{
 	bool sMaster;
 	bool isRange;
 };
+
+struct BPTC1969{
+	bool responseRequested;
+        int dataPacketFormat;
+        int sapId;
+        int appendBlocks;
+};
+
 void delRdacRepeater();
 void delRepeater();
 bool * convertToBits();
-bool * decodeBPTC1969();
+struct BPTC1969 decodeBPTC1969();
+unsigned char *  decodeThreeQuarterRate();
+void decodeHyteraGps();
 
 struct allow checkTalkGroup(int dstId, int slot, int callType){
 	struct allow toSend = {0};
@@ -195,12 +205,11 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 }
 
 void *dmrListener(void *f){
-	int sockfd,n,i,rc;
+	int sockfd,n,i,rc,ii;
 	struct sockaddr_in servaddr,cliaddr;
 	socklen_t len;
 	unsigned char buffer[VFRAMESIZE];
 	unsigned char response[VFRAMESIZE] ={0};
-	//int repPos = (intptr_t)f;
 	struct sockInfo* param = (struct sockInfo*) f;
 	int repPos = param->port - baseDmrPort;
 	struct sockaddr_in cliaddrOrg = param->address;
@@ -219,9 +228,14 @@ void *dmrListener(void *f){
 	unsigned char sMasterFrame[103];
 	char myId[11];
 	unsigned char webUserInfo[100];
-	//{0x00,0x00,0x00,0x00,0x32,0x30,0x34,0x31,0x39,0x2e,0x37}
 	unsigned char dmrPacket[33];
 	bool *bits;
+	struct BPTC1969 BPTC1969decode[3];
+	int dataBlocks[3] = {0};
+	unsigned char *decoded34[3];
+	unsigned char decodedString[3][300];
+	unsigned char gpsString[4] = {0x08,0xD0,0x03,0x00};
+	unsigned char gpsCompressedString[4] = {0x01,0xD0,0x03,0x00};
 
 	syslog(LOG_NOTICE,"DMR thread for port %i started",baseDmrPort + repPos);
 	sockfd=socket(AF_INET,SOCK_DGRAM,0);
@@ -237,7 +251,8 @@ void *dmrListener(void *f){
 	memcpy(myId+4,master.ownCountryCode,4);
 	memcpy(myId+7,master.ownRegion,1);
 	memcpy(myId+8,version,3);
-    
+	memset(decodedString,0,300);
+
 	bzero(&servaddr,sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
@@ -319,25 +334,44 @@ void *dmrListener(void *f){
 						
 						if (slotType == 0x4444){  //Data header
 							syslog(LOG_NOTICE,"[%i-%s]Data header on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
-							dmrState[slot] = DATA;
 							repeaterList[repPos].sending[slot] = true;
-							//decodeBPTC1969(bits);
+							dmrState[slot] = DATA;
+							dataBlocks[slot] = 0;
+							BPTC1969decode[slot] = decodeBPTC1969(bits);
 							break;
 						}
 						
 						if (slotType == 0x5555 && dmrState[slot] == DATA){ // 1/2 rate data continuation
-							//put idle when blocks to follow equals
-							dmrState[slot] = IDLE;
-							repeaterList[repPos].sending[slot] = false;
 							syslog(LOG_NOTICE,"[%i-%s]1/2 rate data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+							dataBlocks[slot]++;
+							if(BPTC1969decode[slot].appendBlocks == dataBlocks[slot]){
+								dmrState[slot] = IDLE;
+								dataBlocks[slot] = 0;
+								repeaterList[repPos].sending[slot] = false;
+								syslog(LOG_NOTICE,"All data blocks received");
+							}
 							break;
 						}
 						if (slotType == 0x6666 && dmrState[slot] == DATA){ // 3/4 rate data continuation
 							syslog(LOG_NOTICE,"[%i-%s]3/4 rate data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
-							//put idle when blocks to follow equals
-							dmrState[slot] = IDLE;
-							repeaterList[repPos].sending[slot] = false;
-							break;
+							decoded34[slot] = decodeThreeQuarterRate(bits);
+							memcpy(decodedString[slot]+(18*dataBlocks[slot]),decoded34[slot],18);
+							dataBlocks[slot]++;
+							if(BPTC1969decode[slot].appendBlocks == dataBlocks[slot]){
+								dmrState[slot] = IDLE;
+								printf("String\n");
+								for(ii=0;ii<(dataBlocks[slot]*18);ii++){
+									printf("(%02X)%c",decodedString[slot][ii],decodedString[slot][ii]);
+								}
+								printf("\n");
+								dataBlocks[slot] = 0;
+								repeaterList[repPos].sending[slot] = false;
+								syslog(LOG_NOTICE,"All data blocks received");
+								printf("--------------------------------------------------------------\n");
+								if(memcmp(decodedString[slot] + 4,gpsString,4) == 0) decodeHyteraGps(decodedString[slot]);
+								if(memcmp(decodedString[slot] + 4,gpsCompressedString,4) == 0) syslog(LOG_NOTICE,"GPS DATA COMPRESSED (not decoding)");
+								memset(decodedString[slot],0,300);
+							}
 						}
 						break;
 						
@@ -383,7 +417,10 @@ void *dmrListener(void *f){
 			time(&timeNow);
 			if (repeaterList[repPos].sending[1] && dmrState[1] != IDLE){
 				if (dmrState[1] == VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 1",baseDmrPort + repPos,repeaterList[repPos].callsign);
-				if (dmrState[1] == DATA) syslog(LOG_NOTICE,"[%i-%s]Data call ended after timeout on slot 1",baseDmrPort + repPos,repeaterList[repPos].callsign);
+				if (dmrState[1] == DATA){
+					syslog(LOG_NOTICE,"[%i-%s]Data call ended after timeout on slot 1",baseDmrPort + repPos,repeaterList[repPos].callsign);
+					dataBlocks[1] = 0;
+				}
 				dmrState[1] = IDLE;
 				repeaterList[repPos].sending[1] = false;
 				block[1] = false;
@@ -391,7 +428,10 @@ void *dmrListener(void *f){
 			}
 			if (repeaterList[repPos].sending[2] && dmrState[2] != IDLE){
 				if (dmrState[2] == VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 2",baseDmrPort + repPos,repeaterList[repPos].callsign);
-				if (dmrState[2] == DATA) syslog(LOG_NOTICE,"[%i-%s]Data call ended after timeout on slot 2",baseDmrPort + repPos,repeaterList[repPos].callsign);
+				if (dmrState[2] == DATA){
+					syslog(LOG_NOTICE,"[%i-%s]Data call ended after timeout on slot 2",baseDmrPort + repPos,repeaterList[repPos].callsign);
+					dataBlocks[2] = 0;
+				}
 				dmrState[2] = IDLE;
 				repeaterList[repPos].sending[2] = false;
 				block[2] = false;

@@ -34,7 +34,7 @@ CmpOptions             := -g $(Preprocessors)
 LinkOptions            :=  
 IncludePath            :=  "$(IncludeSwitch)." "$(IncludeSwitch)." 
 RcIncludePath          :=
-Libs                   :=$(LibrarySwitch)pthread $(LibrarySwitch)sqlite3 
+Libs                   :=$(LibrarySwitch)pthread $(LibrarySwitch)sqlite3 $(LibrarySwitch)m
 LibPath                := "$(LibraryPathSwitch)." 
 
 
@@ -42,7 +42,7 @@ LibPath                := "$(LibraryPathSwitch)."
 ## User defined environment variables
 ##
 CodeLiteDir:=/usr/share/codelite
-Objects=$(IntermediateDirectory)/main$(ObjectSuffix) $(IntermediateDirectory)/dmr$(ObjectSuffix) $(IntermediateDirectory)/rdac$(ObjectSuffix) $(IntermediateDirectory)/smaster$(ObjectSuffix) $(IntermediateDirectory)/sqlite$(ObjectSuffix) $(IntermediateDirectory)/webserv$(ObjectSuffix) $(IntermediateDirectory)/htmlreplace$(ObjectSuffix) $(IntermediateDirectory)/htmlpost$(ObjectSuffix) 
+Objects=$(IntermediateDirectory)/main$(ObjectSuffix) $(IntermediateDirectory)/dmr$(ObjectSuffix) $(IntermediateDirectory)/rdac$(ObjectSuffix) $(IntermediateDirectory)/smaster$(ObjectSuffix) $(IntermediateDirectory)/sqlite$(ObjectSuffix) $(IntermediateDirectory)/webserv$(ObjectSuffix) $(IntermediateDirectory)/htmlreplace$(ObjectSuffix) $(IntermediateDirectory)/htmlpost$(ObjectSuffix) $(IntermediateDirectory)/convbin$(ObjectSuffix) $(IntermediateDirectory)/BPTC1969$(ObjectSuffix) $(IntermediateDirectory)/decode34Rate$(ObjectSuffix) $(IntermediateDirectory)/hyteraDecode$(ObjectSuffix)
 
 ##
 ## Main Build Targets 
@@ -126,6 +126,38 @@ $(IntermediateDirectory)/htmlpost$(DependSuffix): htmlpost.c
 $(IntermediateDirectory)/htmlpost$(PreprocessSuffix): htmlpost.c
 	@$(C_CompilerName) $(CmpOptions) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/htmlpost$(PreprocessSuffix) "htmlpost.c"
 
+$(IntermediateDirectory)/convbin$(ObjectSuffix): convbin.c $(IntermediateDirectory)/convbin$(DependSuffix)
+	$(C_CompilerName) $(SourceSwitch) "convbin.c" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/convbin$(ObjectSuffix) $(IncludePath)
+$(IntermediateDirectory)/convbin$(DependSuffix): convbin.c
+	@$(C_CompilerName) $(CmpOptions) $(IncludePath) -MT$(IntermediateDirectory)/convbin$(ObjectSuffix) -MF$(IntermediateDirectory)/convbin$(DependSuffix) -MM "convbin.c"
+
+$(IntermediateDirectory)/convbin$(PreprocessSuffix): convbin.c
+	@$(C_CompilerName) $(CmpOptions) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/convbin$(PreprocessSuffix) "convbin.c"
+
+$(IntermediateDirectory)/BPTC1969$(ObjectSuffix): BPTC1969.c $(IntermediateDirectory)/BPTC1969$(DependSuffix)
+	$(C_CompilerName) $(SourceSwitch) "BPTC1969.c" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/BPTC1969$(ObjectSuffix) $(IncludePath)
+$(IntermediateDirectory)/BPTC1969$(DependSuffix): BPTC1969.c
+	@$(C_CompilerName) $(CmpOptions) $(IncludePath) -MT$(IntermediateDirectory)/BPTC1969$(ObjectSuffix) -MF$(IntermediateDirectory)/BPTC1969$(DependSuffix) -MM "BPTC1969.c"
+
+$(IntermediateDirectory)/BPTC1969$(PreprocessSuffix): BPTC1969.c
+	@$(C_CompilerName) $(CmpOptions) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/BPTC1969$(PreprocessSuffix) "BPTC1969.c"
+
+$(IntermediateDirectory)/decode34Rate$(ObjectSuffix): decode34Rate.c $(IntermediateDirectory)/decode34Rate$(DependSuffix)
+	$(C_CompilerName) $(SourceSwitch) "decode34Rate.c" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/decode34Rate$(ObjectSuffix) $(IncludePath)
+$(IntermediateDirectory)/decode34Rate$(DependSuffix): decode34Rate.c
+	@$(C_CompilerName) $(CmpOptions) $(IncludePath) -MT$(IntermediateDirectory)/decode34Rate$(ObjectSuffix) -MF$(IntermediateDirectory)/decode34Rate$(DependSuffix) -MM "decode34Rate.c"
+
+$(IntermediateDirectory)/decode34Rate$(PreprocessSuffix): decode34Rate.c
+	@$(C_CompilerName) $(CmpOptions) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/decode34Rate$(PreprocessSuffix) "decode34Rate.c"
+
+$(IntermediateDirectory)/hyteraDecode$(ObjectSuffix): hyteraDecode.c $(IntermediateDirectory)/hyteraDecode$(DependSuffix)
+	$(C_CompilerName) $(SourceSwitch) "hyteraDecode.c" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/hyteraDecode$(ObjectSuffix) $(IncludePath)
+$(IntermediateDirectory)/hyteraDecode$(DependSuffix): hyteraDecode.c
+	@$(C_CompilerName) $(CmpOptions) $(IncludePath) -MT$(IntermediateDirectory)/hyteraDecode$(ObjectSuffix) -MF$(IntermediateDirectory)/hyteraDecode$(DependSuffix) -MM "hyteraDecode.c"
+
+$(IntermediateDirectory)/hyteraDecode$(PreprocessSuffix): hyteraDecode.c
+	@$(C_CompilerName) $(CmpOptions) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/hyteraDecode$(PreprocessSuffix) "hyteraDecode.c"
+
 
 -include $(IntermediateDirectory)/*$(DependSuffix)
 ##
@@ -156,6 +188,19 @@ clean:
 	$(RM) $(IntermediateDirectory)/htmlpost$(ObjectSuffix)
 	$(RM) $(IntermediateDirectory)/htmlpost$(DependSuffix)
 	$(RM) $(IntermediateDirectory)/htmlpost$(PreprocessSuffix)
+	$(RM) $(IntermediateDirectory)/convbin$(ObjectSuffix)
+	$(RM) $(IntermediateDirectory)/convbin$(DependSuffix)
+	$(RM) $(IntermediateDirectory)/convbin$(PreprocessSuffix)
+	$(RM) $(IntermediateDirectory)/BPTC1969$(ObjectSuffix)
+	$(RM) $(IntermediateDirectory)/BPTC1969$(DependSuffix)
+	$(RM) $(IntermediateDirectory)/BPTC1969$(PreprocessSuffix)
+	$(RM) $(IntermediateDirectory)/decode34Rate$(ObjectSuffix)
+	$(RM) $(IntermediateDirectory)/decode34Rate$(DependSuffix)
+	$(RM) $(IntermediateDirectory)/decode34Rate$(PreprocessSuffix)
+	$(RM) $(IntermediateDirectory)/hyteraDecode$(ObjectSuffix)
+	$(RM) $(IntermediateDirectory)/hyteraDecode$(DependSuffix)
+	$(RM) $(IntermediateDirectory)/hyteraDecode$(PreprocessSuffix)
+
 	$(RM) $(OutputFile)
 
 

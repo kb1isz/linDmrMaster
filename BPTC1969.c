@@ -23,6 +23,13 @@
 
 #include "master_server.h"
 
+struct BPTC1969{
+	bool responseRequested;
+        int dataPacketFormat;
+        int sapId;
+        int appendBlocks;
+};
+
 bool * extractInfo(bool bits[264]){
 
         static bool info[196];
@@ -42,11 +49,6 @@ bool * extractInfo(bool bits[264]){
                 bytePos++;
         }
 
-        for(i=166;i<264;i++){
-                info[bytePos] = bits[i];
-                //printf("%i",info[bytePos]);
-                bytePos++;
-        }
         //printf("\n");
         return info;
 }
@@ -105,55 +107,64 @@ bool * extractPayload(bool * deInterData){
 }
 
 
-bool * decodeBPTC1969(bool bits[264]){
+struct BPTC1969 decodeBPTC1969(bool bits[264]){
 
         bool *infoBits; //196 info bits
         bool *deInterleavedBits; //196 bits
         static bool *payloadBits; //96  bits
         int blocksToFollow=0,a;
         unsigned char dpf=0,sap=0,bitPadding=0;
+	struct BPTC1969 BPTC1969decode;
 
         infoBits = extractInfo(bits);
         deInterleavedBits = deInterleave(infoBits);
         payloadBits = extractPayload(deInterleavedBits);
 
-        printf("Payload bits\n");
+        /*printf("Payload bits\n");
         for(a=0;a<96;a++){
                 printf("%i",*(payloadBits+a));
         }
-        printf("\n");
-        if(*(payloadBits+1) == 1) syslog(LOG_NOTICE,"response requested"); else syslog(LOG_NOTICE,"NO response requested");
+        printf("\n");*/
+        if(*(payloadBits+1) == 1){
+		BPTC1969decode.responseRequested = true;
+		 //syslog(LOG_NOTICE,"response requested"); 
+	}
+	else{
+		BPTC1969decode.responseRequested = false;
+		//syslog(LOG_NOTICE,"NO response requested");
+	}
 
         for(a=4;a<8;a++){
                 if(*(payloadBits + a) == true) dpf = dpf + (char)(8 / pow(2,a-4));
         }
-        printf("Data Packet Format: ");
+        //syslog(LOG_NOTICE,"Data Packet Format: ");
+	BPTC1969decode.dataPacketFormat = dpf;
         switch (dpf){
                 case 0:
-                syslog(LOG_NOTICE,"Unified Data Transport\n");
+                //syslog(LOG_NOTICE,"Unified Data Transport\n");
                 break;
 
                 case 1:
-                syslog(LOG_NOTICE,"Response packet\n");
+                //syslog(LOG_NOTICE,"Response packet\n");
                 break;
 
                 case 2:
-                syslog(LOG_NOTICE,"Data packet with unconfirmed delivery\n");
+                //syslog(LOG_NOTICE,"Data packet with unconfirmed delivery\n");
                 break;
 
                 case 3:
-                syslog(LOG_NOTICE,"Data packet with confirmed delivery\n");
+                //syslog(LOG_NOTICE,"Data packet with confirmed delivery\n");
                 break;
 
                 case 13:
-                syslog(LOG_NOTICE,"Short Data: Defined\n");
+                //syslog(LOG_NOTICE,"Short Data: Defined\n");
                 break;
                 case 14:
-                syslog(LOG_NOTICE,"Short Data: Raw or Status/Precoded\n");
+                //syslog(LOG_NOTICE,"Short Data: Raw or Status/Precoded\n");
                 break;
 
                 case 15:
-                syslog(LOG_NOTICE,"Proprietary Data Packet\n");
+                //syslog(LOG_NOTICE,"Proprietary Data Packet\n");
                 break;
 
         }
@@ -162,35 +173,36 @@ bool * decodeBPTC1969(bool bits[264]){
                 if(*(payloadBits + a) == true) sap = sap + (char)(8 / pow(2,a-8));
         }
 		
-		syslog(LOG_NOTICE,"SAP id: ");
+	//syslog(LOG_NOTICE,"SAP id: ");
+	BPTC1969decode.sapId = sap;
         switch (sap){
 
                 case 0:
-                syslog(LOG_NOTICE,"Unified Data Transport\n");
+                //syslog(LOG_NOTICE,"Unified Data Transport\n");
                 break;
 
                 case 2:
-                syslog(LOG_NOTICE,"TCP/IP header compression\n");
+                //syslog(LOG_NOTICE,"TCP/IP header compression\n");
                 break;
 
                 case 3:
-                syslog(LOG_NOTICE,"UDP/IP header compression\n");
+                //syslog(LOG_NOTICE,"UDP/IP header compression\n");
                 break;
 
                 case 4:
-                syslog(LOG_NOTICE,"IP based Packet data\n");
+                //syslog(LOG_NOTICE,"IP based Packet data\n");
                 break;
 
                 case 5:
-                syslog(LOG_NOTICE,"Address Resolution Protocol(ARP)\n");
+                //syslog(LOG_NOTICE,"Address Resolution Protocol(ARP)\n");
                 break;
 
                 case 9:
-                syslog(LOG_NOTICE,"Proprietary Packet data\n");
+                //syslog(LOG_NOTICE,"Proprietary Packet data\n");
                 break;
 
                 case 10:
-                syslog(LOG_NOTICE,"Short Data\n");
+                //syslog(LOG_NOTICE,"Short Data\n");
                 break;
 
         }
@@ -198,12 +210,13 @@ bool * decodeBPTC1969(bool bits[264]){
                 for(a=12;a<16;a++){//only AB in 2nd octet
                          if(*(payloadBits + a) == true) blocksToFollow = blocksToFollow + (char)(8 / pow(2,a-12));
                 }
-                syslog(LOG_NOTICE,"Appended blocks : %i\n",blocksToFollow);
+                BPTC1969decode.appendBlocks = blocksToFollow;
+		syslog(LOG_NOTICE,"Appended blocks : %i\n",blocksToFollow);
 
                 for(a=72;a<80;a++){
                          if(*(payloadBits + a) == true) bitPadding = bitPadding + (char)(128 / pow(2,a-12));
                 }
         }
 
-        return payloadBits;
+        return BPTC1969decode;
 }
