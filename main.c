@@ -117,6 +117,10 @@ int initRepeater(struct repeater repeaterInfo){
 	sprintf(repeaterList[i].firmware,"%s",repeaterInfo.firmware);
 	sprintf(repeaterList[i].mode,"%s",repeaterInfo.mode);
 	sprintf(repeaterList[i].language,"%s",repeaterInfo.language);
+	sprintf(repeaterList[i].geoLocation,"%s",repeaterInfo.geoLocation);
+	sprintf(repeaterList[i].aprsPass,"%s",repeaterInfo.aprsPass);
+	sprintf(repeaterList[i].aprsBeacon,"%s",repeaterInfo.aprsBeacon);
+	sprintf(repeaterList[i].aprsPHG,"%s",repeaterInfo.aprsPHG);
 	syslog(LOG_NOTICE,"Repeater added to list position %i",i);
 	//Highest filled position in the list
 	if (i +1 > highestRepeater) highestRepeater = i + 1;
@@ -153,6 +157,11 @@ void delRepeater(struct sockaddr_in address){
                         memset(repeaterList[i].hardware,0,11);
                         memset(repeaterList[i].firmware,0,14);
                         memset(repeaterList[i].mode,0,4);
+                        memset(repeaterList[i].language,0,50);
+                        memset(repeaterList[i].geoLocation,0,20);
+                        memset(repeaterList[i].aprsPass,0,5);
+                        memset(repeaterList[i].aprsBeacon,0,100);
+                        memset(repeaterList[i].aprsPHG,0,7);
                         syslog(LOG_NOTICE,"Repeater deleted from list pos %i",i);
                         return;
                 }
