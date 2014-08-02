@@ -95,7 +95,7 @@ struct sockInfo{
 struct gpsCoordinates{
 	int radioId;
 	unsigned char latitude[9];
-	unsigned char longitude[9];
+	unsigned char longitude[10];
 	unsigned char speed[4];
 	unsigned char heading[4];
 };

@@ -21,7 +21,6 @@
 
 
 struct repeater rdacList[100] = {0};
-sqlite3 *dbase;
 sqlite3 *openDatabase();
 void closeDatabase();
 void discard();
@@ -97,7 +96,7 @@ int setRdacRepeater(struct sockaddr_in address){
 	rdacList[i].address = address;
 	inet_ntop(AF_INET, &(address.sin_addr), str, INET_ADDRSTRLEN);
 	//See if there is already info in the database based on IP address
-	dbase = openDatabase();
+	db = openDatabase();
 	sprintf(SQLQUERY,"SELECT repeaterId,callsign,txFreq,shift,hardware,firmware,mode,language FROM repeaters WHERE currentAddress = %lu",(long)address.sin_addr.s_addr);
 	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
 		if (sqlite3_step(stmt) == SQLITE_ROW){
@@ -111,11 +110,13 @@ int setRdacRepeater(struct sockaddr_in address){
 			sprintf(rdacList[i].language,"%s",sqlite3_column_text(stmt,7));
 			syslog(LOG_NOTICE,"Assigning %s %s %s %s %s %s %s to repeater on pos %i from database [%s]",rdacList[i].callsign,rdacList[i].hardware
 			,rdacList[i].firmware,rdacList[i].mode,rdacList[i].txFreq,rdacList[i].shift,rdacList[i].language,i,str);
+			sqlite3_finalize(stmt);
+			closeDatabase(db);
+			return 1;
 		}
 	}
-	sqlite3_finalize(stmt);
-	closeDatabase(dbase);
 	syslog(LOG_NOTICE,"Repeater not found in RDAC list, assigning pos %i",i);
+	closeDatabase(db);
 	return i;
 }
 
@@ -131,7 +132,7 @@ int findRdacRepeater(struct sockaddr_in address){
 }
 
 
-bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
+bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg,sqlite3 *dbase){
 	FILE *fp;
 	struct sockaddr_in cliaddr;
 	char *lineread;
@@ -216,7 +217,6 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
 						case 0:  //0 = repeaterId
 						rdacList[repPos].id = buffer[20] << 16 | buffer[19] << 8 | buffer[18];
 						syslog(LOG_NOTICE,"Assigning id %i to repeater on RDAC pos %i [%s]",rdacList[repPos].id,repPos,str);
-						dbase = openDatabase();
 						sprintf(SQLQUERY,"SELECT repeaterId FROM repeaters WHERE repeaterId = %i",rdacList[repPos].id);
 						if (sqlite3_prepare_v2(dbase,SQLQUERY,-1,&stmt,0) == 0){
 							if (sqlite3_step(stmt) != SQLITE_ROW){
@@ -230,13 +230,8 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
 								closeDatabase(dbase);
 								pthread_exit(NULL);
 							}
+							sqlite3_finalize(stmt);
 						}
-						else{
-							closeDatabase(dbase);
-							break;
-						}
-						sqlite3_finalize(stmt);
-						closeDatabase(dbase);
 						break;
 						
 						case 1: {//1 = callsign
@@ -301,7 +296,6 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
 	}
 	syslog(LOG_NOTICE,"Updating from RDAC %s %s %s %s %s %s to repeater on pos %i [%s]",rdacList[repPos].callsign,rdacList[repPos].hardware
 	,rdacList[repPos].firmware,rdacList[repPos].mode,rdacList[repPos].txFreq,rdacList[repPos].shift,repPos,str);
-	dbase = openDatabase();
 	sprintf(SQLQUERY,"SELECT count(*) FROM repeaters WHERE repeaterId = %i",rdacList[repPos].id);
 	time_t now = time(NULL);
 	struct tm *t = localtime(&now);
@@ -317,6 +311,7 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
 			if (sqlite3_prepare_v2(dbase,SQLQUERY,-1,&stmt,0) == 0){
                 		if (sqlite3_step(stmt) == SQLITE_ROW){
 					sprintf(rdacList[repPos].language,"%s",sqlite3_column_text(stmt,0));
+					sqlite3_finalize(stmt);
 					syslog(LOG_NOTICE,"Setting repeater language to %s [%s]",rdacList[repPos].language,str);
 				}
 			}
@@ -333,8 +328,6 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg){
 		closeDatabase(dbase);
 		pthread_exit(NULL);
 	}
-	sqlite3_finalize(stmt);
-	closeDatabase(dbase);
 	fclose(fp);
 	return true;
 }
@@ -357,6 +350,7 @@ void *rdacListener(void* f){
 	time_t timeNow,pingTime;
 	char str[INET_ADDRSTRLEN];
 	int updateAttempts;
+	sqlite3 *dbase;
 
 	inet_ntop(AF_INET, &(cliaddrOrg.sin_addr), str, INET_ADDRSTRLEN);
 	
@@ -398,7 +392,9 @@ void *rdacListener(void* f){
 				if (repPos !=99 && !rdacList[repPos].rdacUpdated && cliaddr.sin_addr.s_addr == cliaddrOrg.sin_addr.s_addr && updateAttempts < 10){
 					updateAttempts++;
 					if (updateAttempts == 10) syslog(LOG_NOTICE,"Failed to update from RDAC on port %i [%s]",port,str);
-					getRepeaterInfo(sockfd,repPos,cliaddr);
+					dbase = openDatabase();
+					getRepeaterInfo(sockfd,repPos,cliaddr,dbase);
+					closeDatabase(dbase);
 				}
 			}
 		}

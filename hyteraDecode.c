@@ -22,13 +22,7 @@
 void decodeHyteraGps(int radioId, unsigned char data[300]){
 
 	struct gpsCoordinates gpsData = {0};
-	unsigned char latitude[9],longitude[9];
-	unsigned char speed[4],heading[4];
 
-	//memset(latitude,0,9);
-	//memset(longitude,0,10);
-	//memset(speed,0,4);
-	//memset(heading,0,4);
 
 	memcpy(gpsData.latitude,data+32,4);
 	memcpy(gpsData.latitude+4,data+38,4);
