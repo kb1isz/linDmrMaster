@@ -97,7 +97,7 @@ int setRdacRepeater(struct sockaddr_in address){
 	inet_ntop(AF_INET, &(address.sin_addr), str, INET_ADDRSTRLEN);
 	//See if there is already info in the database based on IP address
 	db = openDatabase();
-	sprintf(SQLQUERY,"SELECT repeaterId,callsign,txFreq,shift,hardware,firmware,mode,language FROM repeaters WHERE currentAddress = %lu",(long)address.sin_addr.s_addr);
+	sprintf(SQLQUERY,"SELECT repeaterId,callsign,txFreq,shift,hardware,firmware,mode,language,geoLocation,aprsPass,aprsBeacon,aprsPHG FROM repeaters WHERE currentAddress = %lu",(long)address.sin_addr.s_addr);
 	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
 		if (sqlite3_step(stmt) == SQLITE_ROW){
 			rdacList [i].id = sqlite3_column_int(stmt,0);
@@ -108,6 +108,10 @@ int setRdacRepeater(struct sockaddr_in address){
 			sprintf(rdacList[i].firmware,"%s",sqlite3_column_text(stmt,5));
 			sprintf(rdacList[i].mode,"%s",sqlite3_column_text(stmt,6));
 			sprintf(rdacList[i].language,"%s",sqlite3_column_text(stmt,7));
+			sprintf(rdacList[i].geoLocation,"%s",sqlite3_column_text(stmt,8));
+			sprintf(rdacList[i].aprsPass,"%s",sqlite3_column_text(stmt,9));
+			sprintf(rdacList[i].aprsBeacon,"%s",sqlite3_column_text(stmt,10));
+			sprintf(rdacList[i].aprsPHG,"%s",sqlite3_column_text(stmt,7));
 			syslog(LOG_NOTICE,"Assigning %s %s %s %s %s %s %s to repeater on pos %i from database [%s]",rdacList[i].callsign,rdacList[i].hardware
 			,rdacList[i].firmware,rdacList[i].mode,rdacList[i].txFreq,rdacList[i].shift,rdacList[i].language,i,str);
 			sqlite3_finalize(stmt);
@@ -307,10 +311,14 @@ bool getRepeaterInfo(int sockfd,int repPos,struct sockaddr_in cliaddrOrg,sqlite3
 			rdacList[repPos].callsign,rdacList[repPos].txFreq,rdacList[repPos].shift,rdacList[repPos].hardware,rdacList[repPos].
 			firmware,rdacList[repPos].mode,(long)cliaddrOrg.sin_addr.s_addr,timeStamp,str,rdacList[repPos].id);
 			sqlite3_exec(dbase,SQLQUERY,0,0,0);
-			sprintf(SQLQUERY,"SELECT language FROM repeaters WHERE repeaterId = %i",rdacList[repPos].id);
+			sprintf(SQLQUERY,"SELECT language,geoLocation,aprsPass,aprsBeacon,aprsPHG FROM repeaters WHERE repeaterId = %i",rdacList[repPos].id);
 			if (sqlite3_prepare_v2(dbase,SQLQUERY,-1,&stmt,0) == 0){
                 		if (sqlite3_step(stmt) == SQLITE_ROW){
 					sprintf(rdacList[repPos].language,"%s",sqlite3_column_text(stmt,0));
+					sprintf(rdacList[repPos].geoLocation,"%s",sqlite3_column_text(stmt,1));
+					sprintf(rdacList[repPos].aprsPass,"%s",sqlite3_column_text(stmt,2));
+					sprintf(rdacList[repPos].aprsBeacon,"%s",sqlite3_column_text(stmt,3));
+					sprintf(rdacList[repPos].aprsPHG,"%s",sqlite3_column_text(stmt,4));
 					sqlite3_finalize(stmt);
 					syslog(LOG_NOTICE,"Setting repeater language to %s [%s]",rdacList[repPos].language,str);
 				}

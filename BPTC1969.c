@@ -211,7 +211,7 @@ struct BPTC1969 decodeBPTC1969(bool bits[264]){
                          if(*(payloadBits + a) == true) blocksToFollow = blocksToFollow + (char)(8 / pow(2,a-12));
                 }
                 BPTC1969decode.appendBlocks = blocksToFollow;
-		syslog(LOG_NOTICE,"Appended blocks : %i\n",blocksToFollow);
+		//syslog(LOG_NOTICE,"Appended blocks : %i\n",blocksToFollow);
 
                 for(a=72;a<80;a++){
                          if(*(payloadBits + a) == true) bitPadding = bitPadding + (char)(128 / pow(2,a-12));

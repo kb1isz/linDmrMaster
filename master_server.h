@@ -54,7 +54,11 @@ struct repeater{
 	unsigned char hardware[11];
 	unsigned char firmware[14];
 	unsigned char mode[4];
-	char language[50];
+	unsigned char language[50];
+	unsigned char geoLocation[20];
+	unsigned char aprsPass[5];
+	unsigned char aprsBeacon[100];
+	unsigned char aprsPHG[7];
 };
 
 struct masterData{

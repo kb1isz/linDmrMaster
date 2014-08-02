@@ -333,11 +333,11 @@ void *dmrListener(void *f){
 						bits = convertToBits(dmrPacket); //convert it to bits
 						
 						if (slotType == 0x4444){  //Data header
-							syslog(LOG_NOTICE,"[%i-%s]Data header on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
 							repeaterList[repPos].sending[slot] = true;
 							dmrState[slot] = DATA;
 							dataBlocks[slot] = 0;
 							BPTC1969decode[slot] = decodeBPTC1969(bits);
+							syslog(LOG_NOTICE,"[%i-%s]Data header on slot %i src %i dst %i type %i appendBlocks %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType,BPTC1969decode[slot].appendBlocks);
 							break;
 						}
 						
@@ -348,7 +348,7 @@ void *dmrListener(void *f){
 								dmrState[slot] = IDLE;
 								dataBlocks[slot] = 0;
 								repeaterList[repPos].sending[slot] = false;
-								//syslog(LOG_NOTICE,"All data blocks received");
+								//syslog(LOG_NOTICE,"[%i-%s]All data blocks received",baseDmrPort + repPos,repeaterList[repPos].callsign);
 							}
 							break;
 						}
@@ -366,10 +366,10 @@ void *dmrListener(void *f){
 								printf("\n");
 								dataBlocks[slot] = 0;
 								repeaterList[repPos].sending[slot] = false;
-								syslog(LOG_NOTICE,"All data blocks received");
+								syslog(LOG_NOTICE,"[%i-%s]All data blocks received",baseDmrPort + repPos,repeaterList[repPos].callsign);
 								printf("--------------------------------------------------------------\n");
-								if(memcmp(decodedString[slot] + 4,gpsString,4) == 0) decodeHyteraGps(srcId,decodedString[slot]);
-								if(memcmp(decodedString[slot] + 4,gpsCompressedString,4) == 0) syslog(LOG_NOTICE,"GPS DATA COMPRESSED (not decoding)");
+								if(memcmp(decodedString[slot] + 4,gpsString,4) == 0) decodeHyteraGps(srcId,repeaterList[repPos].id,decodedString[slot]);
+								if(memcmp(decodedString[slot] + 4,gpsCompressedString,4) == 0) decodeHyteraGpsCompressed(srcId,repeaterList[repPos].id,decodedString[slot]);
 								memset(decodedString[slot],0,300);
 							}
 						}

@@ -19,7 +19,7 @@
 
 #include "master_server.h"
 
-void decodeHyteraGps(int radioId, unsigned char data[300]){
+void decodeHyteraGps(int radioId,int repeaterId, unsigned char data[300]){
 
 	struct gpsCoordinates gpsData = {0};
 
@@ -30,5 +30,10 @@ void decodeHyteraGps(int radioId, unsigned char data[300]){
 	memcpy(gpsData.speed,data+57,3);
 	memcpy(gpsData.heading,data+60,3);
 
-	syslog(LOG_NOTICE,"Decoded GPS data: LAT(%s) LONG(%s) SPEED(%s) HEADING(%s)",gpsData.latitude,gpsData.longitude,gpsData.speed,gpsData.heading);
+	syslog(LOG_NOTICE,"Decoded GPS data(Hytera): LAT(%s) LONG(%s) SPEED(%s) HEADING(%s)",gpsData.latitude,gpsData.longitude,gpsData.speed,gpsData.heading);
+}
+
+void decodeHyteraGpsCompressed(int radioId,int repeaterId, unsigned char data[300]){
+
+	syslog(LOG_NOTICE,"Compressed GPS data(Hytera) not decoding");
 }
