@@ -42,6 +42,7 @@ int restart = 0;
 
 sqlite3 *db;
 sqlite3 *openDatabase();
+void closeDatabase();
 
 int setRdacRepeater();
 int findRdacRepeater();
@@ -336,6 +337,7 @@ int getMasterInfo(){
 	unsigned char SQLQUERY[200] = {0};
 	sqlite3_stmt *stmt;
 	
+	db = openDatabase();
 	sprintf(SQLQUERY,"SELECT ownName,ownCountryCode,ownRegion,sMasterIp,sMasterPort FROM sMaster");
 	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
 		if (sqlite3_step(stmt) == SQLITE_ROW){
@@ -349,11 +351,14 @@ int getMasterInfo(){
 		}
 		else{
 			syslog(LOG_NOTICE,"failed to read sMasterInfo, no row");
+			sqlite3_finalize(stmt);
+			closeDatabase(db);
 			return 0;
 		}
 	}
 	else{
 		syslog(LOG_NOTICE,"failed to read sMasterInfo, query bad");
+		closeDatabase(db);
 		return 0;
 	}
 	sqlite3_finalize(stmt);
@@ -373,22 +378,25 @@ int getMasterInfo(){
 		else{
 			syslog(LOG_NOTICE,"failed to read masterInfo, no row");
 			sqlite3_finalize(stmt);
+			closeDatabase(db);
 			return 0;
 		}
 	}
 	else{
 		syslog(LOG_NOTICE,"failed to read masterInfo, query bad");
-		sqlite3_finalize(stmt);
+		closeDatabase(db);
 		return 0;
 	}
 	syslog(LOG_NOTICE,"ServicePort %i rdacPort %i dmrPort %i baseDmrPort %i baseRdacPort %i maxRepeaters %i echoId %i rrsGpsId",
 	servicePort,rdacPort,dmrPort,baseDmrPort,baseRdacPort,maxRepeaters-1,echoId,rrsGpsId);
 	if (maxRepeaters > 98){
 		syslog(LOG_NOTICE,"maxRepeaters exceeded 98, quiting application");
+		closeDatabase(db);
 		sqlite3_finalize(stmt);
 		return 0;
 	}
 	sqlite3_finalize(stmt);
+	closeDatabase(db);
 	return 1;
 }
 
@@ -409,6 +417,7 @@ int loadTalkGroups(){
 	unsigned char repTS1[100];
 	unsigned char repTS2[100];
 	
+	db = openDatabase();
 	sprintf(SQLQUERY,"SELECT repTS1,repTS2,sMasterTS1,sMasterTS2 FROM master");
 	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
 		if (sqlite3_step(stmt) == SQLITE_ROW){
@@ -569,10 +578,11 @@ int loadTalkGroups(){
 				}
 			}
 			else syslog(LOG_NOTICE,"NONE");
+			closeDatabase(db);
 			return 1;
 		}
 	}
-	sqlite3_finalize(stmt);
+	closeDatabase(db);
 	syslog(LOG_NOTICE,"Failed to load talkgroups. Is master table populated in database ?");
 	return 0;
 }
@@ -627,7 +637,7 @@ int main(int argc, char**argv)
 		syslog(LOG_NOTICE,"Failed to init database");
 		return 0;
 	}
-
+	closeDatabase(db);
 	//Start webserver thread
 	pthread_create(&thread, NULL, webServerListener,NULL);
 

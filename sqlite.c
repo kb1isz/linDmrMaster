@@ -29,8 +29,11 @@ sqlite3 *openDatabase(){
 		sqlite3_close(db);
 		return NULL;
 	}
-	syslog(LOG_NOTICE,"Database opened");
 	return db;
+}
+
+void closeDatabase(sqlite3 *db){
+	if (sqlite3_close(db) != SQLITE_OK) syslog(LOG_NOTICE,"Failed to close SQLITE database");
 }
 
 bool isFieldExisting(sqlite3 *db, char *table, char *field){

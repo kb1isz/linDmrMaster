@@ -342,13 +342,13 @@ void *dmrListener(void *f){
 						}
 						
 						if (slotType == 0x5555 && dmrState[slot] == DATA){ // 1/2 rate data continuation
-							syslog(LOG_NOTICE,"[%i-%s]1/2 rate data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+							//syslog(LOG_NOTICE,"[%i-%s]1/2 rate data continuation on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
 							dataBlocks[slot]++;
 							if(BPTC1969decode[slot].appendBlocks == dataBlocks[slot]){
 								dmrState[slot] = IDLE;
 								dataBlocks[slot] = 0;
 								repeaterList[repPos].sending[slot] = false;
-								syslog(LOG_NOTICE,"All data blocks received");
+								//syslog(LOG_NOTICE,"All data blocks received");
 							}
 							break;
 						}
