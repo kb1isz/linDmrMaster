@@ -64,6 +64,11 @@ void delRdacRepeater(struct sockaddr_in address){
 			memset(rdacList[i].hardware,0,11);
 			memset(rdacList[i].firmware,0,14);
 			memset(rdacList[i].mode,0,4);
+                        memset(rdacList[i].language,0,50);
+                        memset(rdacList[i].geoLocation,0,20);
+                        memset(rdacList[i].aprsPass,0,5);
+                        memset(rdacList[i].aprsBeacon,0,100);
+                        memset(rdacList[i].aprsPHG,0,7);
 			syslog(LOG_NOTICE,"Deleted repeater in rdac list on pos %i",i);
 			return;
 		} 
@@ -111,7 +116,7 @@ int setRdacRepeater(struct sockaddr_in address){
 			sprintf(rdacList[i].geoLocation,"%s",sqlite3_column_text(stmt,8));
 			sprintf(rdacList[i].aprsPass,"%s",sqlite3_column_text(stmt,9));
 			sprintf(rdacList[i].aprsBeacon,"%s",sqlite3_column_text(stmt,10));
-			sprintf(rdacList[i].aprsPHG,"%s",sqlite3_column_text(stmt,7));
+			sprintf(rdacList[i].aprsPHG,"%s",sqlite3_column_text(stmt,11));
 			syslog(LOG_NOTICE,"Assigning %s %s %s %s %s %s %s to repeater on pos %i from database [%s]",rdacList[i].callsign,rdacList[i].hardware
 			,rdacList[i].firmware,rdacList[i].mode,rdacList[i].txFreq,rdacList[i].shift,rdacList[i].language,i,str);
 			sqlite3_finalize(stmt);

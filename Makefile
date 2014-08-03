@@ -42,7 +42,7 @@ LibPath                := "$(LibraryPathSwitch)."
 ## User defined environment variables
 ##
 CodeLiteDir:=/usr/share/codelite
-Objects=$(IntermediateDirectory)/main$(ObjectSuffix) $(IntermediateDirectory)/dmr$(ObjectSuffix) $(IntermediateDirectory)/rdac$(ObjectSuffix) $(IntermediateDirectory)/smaster$(ObjectSuffix) $(IntermediateDirectory)/sqlite$(ObjectSuffix) $(IntermediateDirectory)/webserv$(ObjectSuffix) $(IntermediateDirectory)/htmlreplace$(ObjectSuffix) $(IntermediateDirectory)/htmlpost$(ObjectSuffix) $(IntermediateDirectory)/convbin$(ObjectSuffix) $(IntermediateDirectory)/BPTC1969$(ObjectSuffix) $(IntermediateDirectory)/decode34Rate$(ObjectSuffix) $(IntermediateDirectory)/hyteraDecode$(ObjectSuffix)
+Objects=$(IntermediateDirectory)/main$(ObjectSuffix) $(IntermediateDirectory)/dmr$(ObjectSuffix) $(IntermediateDirectory)/rdac$(ObjectSuffix) $(IntermediateDirectory)/smaster$(ObjectSuffix) $(IntermediateDirectory)/sqlite$(ObjectSuffix) $(IntermediateDirectory)/webserv$(ObjectSuffix) $(IntermediateDirectory)/htmlreplace$(ObjectSuffix) $(IntermediateDirectory)/htmlpost$(ObjectSuffix) $(IntermediateDirectory)/convbin$(ObjectSuffix) $(IntermediateDirectory)/BPTC1969$(ObjectSuffix) $(IntermediateDirectory)/decode34Rate$(ObjectSuffix) $(IntermediateDirectory)/hyteraDecode$(ObjectSuffix) $(IntermediateDirectory)/aprs$(ObjectSuffix)
 
 ##
 ## Main Build Targets 
@@ -158,6 +158,14 @@ $(IntermediateDirectory)/hyteraDecode$(DependSuffix): hyteraDecode.c
 $(IntermediateDirectory)/hyteraDecode$(PreprocessSuffix): hyteraDecode.c
 	@$(C_CompilerName) $(CmpOptions) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/hyteraDecode$(PreprocessSuffix) "hyteraDecode.c"
 
+$(IntermediateDirectory)/aprs$(ObjectSuffix): aprs.c $(IntermediateDirectory)/aprs$(DependSuffix)
+	$(C_CompilerName) $(SourceSwitch) "aprs.c" $(CmpOptions) $(ObjectSwitch)$(IntermediateDirectory)/aprs$(ObjectSuffix) $(IncludePath)
+$(IntermediateDirectory)/aprs$(DependSuffix): aprs.c
+	@$(C_CompilerName) $(CmpOptions) $(IncludePath) -MT$(IntermediateDirectory)/aprs$(ObjectSuffix) -MF$(IntermediateDirectory)/aprs$(DependSuffix) -MM "aprs.c"
+
+$(IntermediateDirectory)/aprs$(PreprocessSuffix): aprs.c
+	@$(C_CompilerName) $(CmpOptions) $(IncludePath) $(PreprocessOnlySwitch) $(OutputSwitch) $(IntermediateDirectory)/aprs$(PreprocessSuffix) "aprs.c"
+
 
 -include $(IntermediateDirectory)/*$(DependSuffix)
 ##
@@ -200,6 +208,9 @@ clean:
 	$(RM) $(IntermediateDirectory)/hyteraDecode$(ObjectSuffix)
 	$(RM) $(IntermediateDirectory)/hyteraDecode$(DependSuffix)
 	$(RM) $(IntermediateDirectory)/hyteraDecode$(PreprocessSuffix)
+	$(RM) $(IntermediateDirectory)/aprs$(ObjectSuffix)
+	$(RM) $(IntermediateDirectory)/aprs$(DependSuffix)
+	$(RM) $(IntermediateDirectory)/aprs$(PreprocessSuffix)
 
 	$(RM) $(OutputFile)
 

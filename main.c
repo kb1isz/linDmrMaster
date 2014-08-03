@@ -103,7 +103,7 @@ int initRepeater(struct repeater repeaterInfo){
 	
 	//oops, max repeaters reached
 	if (i == maxRepeaters){
-		syslog(LOG_NOTICE,"Not possible to add repeater, maximum number reached");
+		syslog(LOG_NOTICE,"Not possible to add repeater, maximum number reached. Max set to %i",maxRepeaters);
 		return 99;
 	}
 	//Set all the needed info for a repeater

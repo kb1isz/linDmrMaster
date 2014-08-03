@@ -368,8 +368,8 @@ void *dmrListener(void *f){
 								repeaterList[repPos].sending[slot] = false;
 								syslog(LOG_NOTICE,"[%i-%s]All data blocks received",baseDmrPort + repPos,repeaterList[repPos].callsign);
 								printf("--------------------------------------------------------------\n");
-								if(memcmp(decodedString[slot] + 4,gpsString,4) == 0) decodeHyteraGps(srcId,repeaterList[repPos].id,decodedString[slot]);
-								if(memcmp(decodedString[slot] + 4,gpsCompressedString,4) == 0) decodeHyteraGpsCompressed(srcId,repeaterList[repPos].id,decodedString[slot]);
+								if(memcmp(decodedString[slot] + 4,gpsString,4) == 0) decodeHyteraGps(srcId,repeaterList[repPos],decodedString[slot]);
+								if(memcmp(decodedString[slot] + 4,gpsCompressedString,4) == 0) decodeHyteraGpsCompressed(srcId,repeaterList[repPos],decodedString[slot]);
 								memset(decodedString[slot],0,300);
 							}
 						}

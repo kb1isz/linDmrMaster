@@ -61,6 +61,18 @@ struct repeater{
 	unsigned char aprsPHG[7];
 };
 
+
+struct idInfo{
+        int radioId;
+        char callsign[32];
+        char name[32];
+        long aprsTimeStamp;
+        char aprsSuffix[4];
+        char aprsBeacon[100];
+        int aprsSymbol;
+        int messageStore;
+};
+
 struct masterData{
 	struct sockaddr_in address;
 	int sockfd;
