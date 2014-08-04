@@ -36,6 +36,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <math.h>
+#include <regex.h>
 
 struct repeater{
 	struct sockaddr_in address;
@@ -56,7 +57,7 @@ struct repeater{
 	unsigned char mode[4];
 	unsigned char language[50];
 	unsigned char geoLocation[20];
-	unsigned char aprsPass[5];
+	unsigned char aprsPass[6];
 	unsigned char aprsBeacon[100];
 	unsigned char aprsPHG[7];
 };

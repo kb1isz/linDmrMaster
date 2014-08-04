@@ -23,7 +23,8 @@ void sendAprs();
 void decodeHyteraGps(int radioId,struct repeater repeater, unsigned char data[300]){
 
 	struct gpsCoordinates gpsData = {0};
-
+	regex_t regex;
+	int reti;
 
 	memcpy(gpsData.latitude,data+33,3);
 	memcpy(gpsData.latitude+3,data+38,4);
@@ -34,6 +35,34 @@ void decodeHyteraGps(int radioId,struct repeater repeater, unsigned char data[30
 	memcpy(gpsData.heading,data+60,3);
 
 	syslog(LOG_NOTICE,"[%s]Decoded GPS data(Hytera): LAT(%s) LONG(%s) SPEED(%s) HEADING(%s)",repeater.callsign,gpsData.latitude,gpsData.longitude,gpsData.speed,gpsData.heading);
+	
+	reti = regcomp(&regex, "^[0-9][0-9][0-9][0-9][.][0-9][0-9][NZ]$", 0);
+	if(reti){
+		syslog(LOG_NOTICE,"[%s]Hyt GPS decode,could not compile regex latitude",repeater.callsign);
+		return;
+	}
+	reti = regexec(&regex,gpsData.latitude,0,NULL,0);
+	if(reti == REG_NOMATCH){
+		syslog(LOG_NOTICE,"[%s]Corrupt latitude received",repeater.callsign);
+		regfree(&regex);
+		return;
+	}
+	regfree(&regex);
+
+	reti = regcomp(&regex, "^[0-9][0-9][0-9][0-9][0-9][.][0-9][0-9][EW]$", 0);
+	if(reti){
+		syslog(LOG_NOTICE,"[%s]Hyt GPS decode,could not compile regex longitude",repeater.callsign);
+		regfree(&regex);
+		return;
+	}
+	reti = regexec(&regex,gpsData.longitude,0,NULL,0);
+	if(reti == REG_NOMATCH){
+		syslog(LOG_NOTICE,"[%s]Corrupt longitude received",repeater.callsign);
+		regfree(&regex);
+		return;
+	}
+	regfree(&regex);
+
 	sendAprs(gpsData,radioId,repeater);
 }
 
