@@ -21,6 +21,9 @@
 sqlite3 *openDatabase();
 void closeDatabase();
 
+char aprsUrl[100];
+char aprsPort[7];
+
 
 int openAprsSock(){
 
@@ -34,7 +37,7 @@ int openAprsSock(){
 	char ipstr[INET_ADDRSTRLEN];
 
     syslog(LOG_NOTICE,"Opening APRS socket");
-	if ((rv = getaddrinfo("belgium.aprs2.net", "8080", &hints, &servinfo)) != 0) {
+	if ((rv = getaddrinfo(aprsUrl, aprsPort, &hints, &servinfo)) != 0) {
 		syslog(LOG_NOTICE,"getaddrinfo: %s\n", gai_strerror(rv));
 		return;
 	}
@@ -47,7 +50,7 @@ int openAprsSock(){
 		inet_ntop(p->ai_family, addr, ipstr, sizeof ipstr); 
 		syslog(LOG_NOTICE,"address: %s",ipstr);
 		if ((sockfd = socket(p->ai_family, p->ai_socktype,p->ai_protocol)) == -1) {
-			syslog(LOG_NOTICE,"To able to create APRS sock");
+			syslog(LOG_NOTICE,"Not able to create APRS sock");
 			continue;
 		}
 		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {

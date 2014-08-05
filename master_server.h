@@ -149,3 +149,5 @@ extern char version[5];
 extern sqlite3 *db;
 extern int restart;
 extern char page[50];
+extern char aprsUrl[100];
+extern char aprsPort[7];

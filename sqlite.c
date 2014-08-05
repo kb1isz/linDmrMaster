@@ -90,7 +90,7 @@ int initDatabase(sqlite3 *db){
 	bool neededToCreate = false;
 	
 	if (!isTableExisting(db,"master")){
-		sprintf(SQLQUERY,"CREATE TABLE master (repTS1 VARCHAR(100) default '',repTS2 VARCHAR(100) default '',sMasterTS1 VARCHAR(100) default '',sMasterTS2 VARCHAR(100) default '', timeBase INTEGER default 60, servicePort int default 50000, rdacPort int default 50002,dmrPort int default 50001, baseDmrPort int default 50100, baseRdacPort int default 50200, maxRepeaters int default 20, echoId int default 9990, rrsGpsId in default 500)");
+		sprintf(SQLQUERY,"CREATE TABLE master (repTS1 VARCHAR(100) default '',repTS2 VARCHAR(100) default '',sMasterTS1 VARCHAR(100) default '',sMasterTS2 VARCHAR(100) default '', timeBase INTEGER default 60, servicePort int default 50000, rdacPort int default 50002,dmrPort int default 50001, baseDmrPort int default 50100, baseRdacPort int default 50200, maxRepeaters int default 20, echoId int default 9990, rrsGpsId in default 500, aprsUrl VARCHAR(100) default '', aprsPort VARCHAR(7) default '8080')");
 		if (sqlite3_exec(db,SQLQUERY,0,0,0) == 0){
 			neededToCreate = true;
 			sprintf(SQLQUERY,"INSERT INTO master (repTS1) VALUES ('')");
@@ -172,6 +172,29 @@ int initDatabase(sqlite3 *db){
                         return 0;
                 }
         }
+
+        if (!isFieldExisting(db,"master","aprsUrl")){
+                sprintf(SQLQUERY,"ALTER TABLE master ADD COLUMN aprsUrl VARCHAR(100) default ''");
+                if (sqlite3_exec(db,SQLQUERY,0,0,0) == 0){
+                        syslog(LOG_NOTICE,"field aprsUrl in master created");
+                }
+                else{
+                        syslog(LOG_NOTICE,"Database error: %s",sqlite3_errmsg(db));
+                        return 0;
+                }
+        }
+
+        if (!isFieldExisting(db,"master","aprsPort")){
+                sprintf(SQLQUERY,"ALTER TABLE master ADD COLUMN aprsPort VARCHAR(7) default '8080'");
+                if (sqlite3_exec(db,SQLQUERY,0,0,0) == 0){
+                        syslog(LOG_NOTICE,"field aprsPort in master created");
+                }
+                else{
+                        syslog(LOG_NOTICE,"Database error: %s",sqlite3_errmsg(db));
+                        return 0;
+                }
+        }
+
 
         if (!isFieldExisting(db,"repeaters","geoLocation")){
                 sprintf(SQLQUERY,"ALTER TABLE repeaters ADD COLUMN geoLocation varchar(20) default ''");
