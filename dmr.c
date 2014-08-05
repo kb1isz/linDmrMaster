@@ -71,7 +71,9 @@ void delRepeater();
 bool * convertToBits();
 struct BPTC1969 decodeBPTC1969();
 unsigned char *  decodeThreeQuarterRate();
-void decodeHyteraGps();
+void decodeHyteraGpsTriggered();
+void decodeHyteraGpsCompressed();
+void decodeHyteraGpsButton();
 
 struct allow checkTalkGroup(int dstId, int slot, int callType){
 	struct allow toSend = {0};
@@ -371,8 +373,8 @@ void *dmrListener(void *f){
 								syslog(LOG_NOTICE,"[%s]All data blocks received",repeaterList[repPos].callsign);
 								//printf("--------------------------------------------------------------\n");
 								if (dstId == rrsGpsId){
-									if(memcmp(decodedString[slot] + 4,gpsStringHyt,4) == 0) decodeHyteraGps(srcId,repeaterList[repPos],decodedString[slot]);
-									if(memcmp(decodedString[slot] + 4,gpsStringButtonHyt,4) == 0) decodeHyteraGps(srcId,repeaterList[repPos],decodedString[slot]);
+									if(memcmp(decodedString[slot] + 4,gpsStringHyt,4) == 0) decodeHyteraGpsTriggered(srcId,repeaterList[repPos],decodedString[slot]);
+									if(memcmp(decodedString[slot] + 4,gpsStringButtonHyt,4) == 0) decodeHyteraGpsButton(srcId,repeaterList[repPos],decodedString[slot]);
 									if(memcmp(decodedString[slot] + 4,gpsCompressedStringHyt,4) == 0) decodeHyteraGpsCompressed(srcId,repeaterList[repPos],decodedString[slot]);
 								}
 								memset(decodedString[slot],0,300);
