@@ -34,6 +34,9 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
+#include <math.h>
+#include <regex.h>
 
 struct repeater{
 	struct sockaddr_in address;
@@ -52,6 +55,23 @@ struct repeater{
 	unsigned char hardware[11];
 	unsigned char firmware[14];
 	unsigned char mode[4];
+	unsigned char language[50];
+	unsigned char geoLocation[20];
+	unsigned char aprsPass[6];
+	unsigned char aprsBeacon[100];
+	unsigned char aprsPHG[7];
+};
+
+
+struct idInfo{
+        int radioId;
+        char callsign[32];
+        char name[32];
+        long aprsTimeStamp;
+        char aprsSuffix[4];
+        char aprsBeacon[100];
+        int aprsSymbol;
+        int messageStore;
 };
 
 struct masterData{
@@ -89,6 +109,14 @@ struct sockInfo{
 	int port;
 };
 
+struct gpsCoordinates{
+	int radioId;
+	unsigned char latitude[9];
+	unsigned char longitude[10];
+	unsigned char speed[4];
+	unsigned char heading[4];
+};
+
 typedef enum {VOICE, DATA, IDLE} state;
 
 extern struct repeater repeaterList[100];
@@ -109,6 +137,7 @@ extern int rdacPort;
 extern int baseRdacPort;
 extern int maxRepeaters;
 extern int echoId;
+extern int rrsGpsId;
 extern state dmrState[3];
 extern int (*sMasterTS1List)[2];
 extern int (*sMasterTS2List)[2];
@@ -120,3 +149,5 @@ extern char version[5];
 extern sqlite3 *db;
 extern int restart;
 extern char page[50];
+extern char aprsUrl[100];
+extern char aprsPort[7];

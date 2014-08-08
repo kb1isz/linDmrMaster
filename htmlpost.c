@@ -22,6 +22,9 @@
 
 char page[50];
 void handleParameter();
+sqlite3 *openDatabase();
+void closeDatabase();
+
 
 int handlePost(int conn, struct ReqInfo  *reqinfo){
 	char buffer[MAX_REQ_LINE] = {0};
@@ -57,6 +60,7 @@ void handleParameter(char buffer[MAX_REQ_LINE]){
 	char *value;
 	char *listValue;
 	char SQLQUERY[300];
+	db = openDatabase(); 
 	if(param = strtok(buffer,"=")){
 		if (strstr(param,"page")){
 			value = strtok(NULL,"=");
@@ -113,4 +117,5 @@ void handleParameter(char buffer[MAX_REQ_LINE]){
 			}
 		}
 	}
+	closeDatabase(db);
 }

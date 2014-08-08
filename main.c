@@ -26,8 +26,13 @@ int rdacPort = 50002;
 int baseRdacPort = 50200;
 int maxRepeaters = 20;
 int echoId = 9990;
+<<<<<<< HEAD
 int recordId = 9991;
 char version[5] = "0.9";
+=======
+int rrsGpsId = 500;
+char version[5] = "1.0";
+>>>>>>> upstream/master
 
 struct repeater repeaterList[100] = {0};
 struct repeater emptyRepeater = {0};
@@ -42,6 +47,7 @@ int restart = 0;
 
 sqlite3 *db;
 sqlite3 *openDatabase();
+void closeDatabase();
 
 int setRdacRepeater();
 int findRdacRepeater();
@@ -102,7 +108,7 @@ int initRepeater(struct repeater repeaterInfo){
 	
 	//oops, max repeaters reached
 	if (i == maxRepeaters){
-		syslog(LOG_NOTICE,"Not possible to add repeater, maximum number reached");
+		syslog(LOG_NOTICE,"Not possible to add repeater, maximum number reached. Max set to %i",maxRepeaters);
 		return 99;
 	}
 	//Set all the needed info for a repeater
@@ -115,6 +121,11 @@ int initRepeater(struct repeater repeaterInfo){
 	sprintf(repeaterList[i].hardware,"%s",repeaterInfo.hardware);
 	sprintf(repeaterList[i].firmware,"%s",repeaterInfo.firmware);
 	sprintf(repeaterList[i].mode,"%s",repeaterInfo.mode);
+	sprintf(repeaterList[i].language,"%s",repeaterInfo.language);
+	sprintf(repeaterList[i].geoLocation,"%s",repeaterInfo.geoLocation);
+	sprintf(repeaterList[i].aprsPass,"%s",repeaterInfo.aprsPass);
+	sprintf(repeaterList[i].aprsBeacon,"%s",repeaterInfo.aprsBeacon);
+	sprintf(repeaterList[i].aprsPHG,"%s",repeaterInfo.aprsPHG);
 	syslog(LOG_NOTICE,"Repeater added to list position %i",i);
 	//Highest filled position in the list
 	if (i +1 > highestRepeater) highestRepeater = i + 1;
@@ -151,6 +162,12 @@ void delRepeater(struct sockaddr_in address){
                         memset(repeaterList[i].hardware,0,11);
                         memset(repeaterList[i].firmware,0,14);
                         memset(repeaterList[i].mode,0,4);
+                        memset(repeaterList[i].language,0,50);
+                        memset(repeaterList[i].geoLocation,0,20);
+                        memset(repeaterList[i].aprsPass,0,6);
+                        memset(repeaterList[i].aprsBeacon,0,100);
+                        memset(repeaterList[i].aprsPHG,0,7);
+                        syslog(LOG_NOTICE,"Repeater deleted from list pos %i",i);
                         return;
                 }
         }
@@ -259,7 +276,10 @@ void serviceListener(port){
 						syslog(LOG_NOTICE,"DMR request from repeater [%s - %s] already assigned a DMR port, not starting thread",str,repeaterList[repPos].callsign);
 					}
 					else{  //Start a new DMR thread for this repeater
-						pthread_create(&thread, NULL, dmrListener,(void *)repPos);
+                                                struct sockInfo *param = malloc(sizeof(struct sockInfo));
+                                                param->address = cliaddr;
+                                                param->port = redirectPort;
+						pthread_create(&thread, NULL, dmrListener,param);
 					}
 					sendto(sockfd,response,n+4,0,(struct sockaddr *)&cliaddr,sizeof(cliaddr));
 					syslog(LOG_NOTICE,"Re-directed repeater [%s - %s] to DMR port %i",str,repeaterList[repPos].callsign,redirectPort);
@@ -331,6 +351,7 @@ int getMasterInfo(){
 	unsigned char SQLQUERY[200] = {0};
 	sqlite3_stmt *stmt;
 	
+	db = openDatabase();
 	sprintf(SQLQUERY,"SELECT ownName,ownCountryCode,ownRegion,sMasterIp,sMasterPort FROM sMaster");
 	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
 		if (sqlite3_step(stmt) == SQLITE_ROW){
@@ -344,18 +365,21 @@ int getMasterInfo(){
 		}
 		else{
 			syslog(LOG_NOTICE,"failed to read sMasterInfo, no row");
+			sqlite3_finalize(stmt);
+			closeDatabase(db);
 			return 0;
 		}
 	}
 	else{
 		syslog(LOG_NOTICE,"failed to read sMasterInfo, query bad");
+		closeDatabase(db);
 		return 0;
 	}
 	sqlite3_finalize(stmt);
     syslog(LOG_NOTICE,"sMaster info: ownName %s, ownCountryCode %s, ownRegion %s, sMasterIp %s, sMasterPort %s",
 	master.ownName,master.ownCountryCode,master.ownRegion,master.sMasterIp,master.sMasterPort);
 	
-	sprintf(SQLQUERY,"SELECT servicePort, rdacPort, dmrPort, baseDmrPort, maxRepeaters, echoId FROM master");
+	sprintf(SQLQUERY,"SELECT servicePort, rdacPort, dmrPort, baseDmrPort, maxRepeaters, echoId,rrsGpsId,aprsUrl,aprsPort FROM master");
 	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
 		if (sqlite3_step(stmt) == SQLITE_ROW){
 			servicePort = sqlite3_column_int(stmt,0);
@@ -364,26 +388,34 @@ int getMasterInfo(){
 			baseDmrPort = sqlite3_column_int(stmt,3);
 			maxRepeaters = sqlite3_column_int(stmt,4) + 1;
 			echoId = sqlite3_column_int(stmt,5);
+			rrsGpsId = sqlite3_column_int(stmt,6);
+			sprintf(aprsUrl,"%s",sqlite3_column_text(stmt,7));
+			sprintf(aprsPort,"%s",sqlite3_column_text(stmt,8));
+
 		}
 		else{
 			syslog(LOG_NOTICE,"failed to read masterInfo, no row");
 			sqlite3_finalize(stmt);
+			closeDatabase(db);
 			return 0;
 		}
 	}
 	else{
 		syslog(LOG_NOTICE,"failed to read masterInfo, query bad");
-		sqlite3_finalize(stmt);
+		closeDatabase(db);
 		return 0;
 	}
-	syslog(LOG_NOTICE,"ServicePort %i rdacPort %i dmrPort %i baseDmrPort %i maxRepeaters %i echoId %i",
-	servicePort,rdacPort,dmrPort,baseDmrPort,maxRepeaters-1,echoId);
+	syslog(LOG_NOTICE,"ServicePort %i rdacPort %i dmrPort %i baseDmrPort %i baseRdacPort %i maxRepeaters %i echoId %i rrsGpsId %i",
+	servicePort,rdacPort,dmrPort,baseDmrPort,baseRdacPort,maxRepeaters-1,echoId,rrsGpsId);
+	syslog(LOG_NOTICE,"Assigning APRS server %s port %s",aprsUrl,aprsPort);
 	if (maxRepeaters > 98){
 		syslog(LOG_NOTICE,"maxRepeaters exceeded 98, quiting application");
+		closeDatabase(db);
 		sqlite3_finalize(stmt);
 		return 0;
 	}
 	sqlite3_finalize(stmt);
+	closeDatabase(db);
 	return 1;
 }
 
@@ -404,6 +436,7 @@ int loadTalkGroups(){
 	unsigned char repTS1[100];
 	unsigned char repTS2[100];
 	
+	db = openDatabase();
 	sprintf(SQLQUERY,"SELECT repTS1,repTS2,sMasterTS1,sMasterTS2 FROM master");
 	if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
 		if (sqlite3_step(stmt) == SQLITE_ROW){
@@ -564,10 +597,11 @@ int loadTalkGroups(){
 				}
 			}
 			else syslog(LOG_NOTICE,"NONE");
+			closeDatabase(db);
 			return 1;
 		}
 	}
-	sqlite3_finalize(stmt);
+	closeDatabase(db);
 	syslog(LOG_NOTICE,"Failed to load talkgroups. Is master table populated in database ?");
 	return 0;
 }
@@ -579,7 +613,7 @@ int main(int argc, char**argv)
 	// Our process ID and Session ID
 	pid_t pid,sid;
 	
-	printf("Becoming a daemon...\n");
+	/*printf("Becoming a daemon...\n");
 	// Fork off the parent process
 	pid = fork();
     if (pid < 0) {
@@ -592,13 +626,13 @@ int main(int argc, char**argv)
     }
 	
 	// Change the file mode mask 
-    umask(0);
-
+    umask(0);*/
+    
 	setlogmask (LOG_UPTO (LOG_NOTICE));
 	openlog("Master-server", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-
+     
 	// Create a new SID for the child process 
-    sid = setsid();
+    /*sid = setsid();
     if (sid < 0) {
 		// Log the failure 
 		exit(EXIT_FAILURE);
@@ -607,7 +641,7 @@ int main(int argc, char**argv)
 	// Close out the standard file descriptors 
     close(STDIN_FILENO);
     close(STDOUT_FILENO);
-    close(STDERR_FILENO);	
+    close(STDERR_FILENO);*/
 	
 	pthread_t thread;
 	int port;
@@ -622,7 +656,7 @@ int main(int argc, char**argv)
 		syslog(LOG_NOTICE,"Failed to init database");
 		return 0;
 	}
-
+	closeDatabase(db);
 	//Start webserver thread
 	pthread_create(&thread, NULL, webServerListener,NULL);
 

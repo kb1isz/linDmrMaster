@@ -18,6 +18,9 @@
 */
 
 #include "master_server.h"
+sqlite3 *openDatabase();
+void closeDatabase();
+
 
 char *htmlReplace(char line[2000], char *resource){
 	
@@ -179,6 +182,7 @@ if (strstr(resource,"sMaster.html")){
 if (strstr(resource,"repeaters.html")){
 	if(pos = strstr(line,"$repeaters")){
 		memset(line,0,2000);
+		db = openDatabase();
 		sprintf(SQLQUERY,"SELECT repeaterId,callsign FROM repeaters");
 		if (sqlite3_prepare_v2(db,SQLQUERY,-1,&stmt,0) == 0){
 			while (sqlite3_step(stmt) != SQLITE_DONE){
@@ -186,6 +190,7 @@ if (strstr(resource,"repeaters.html")){
 				strcat(line,tmpLine);
 			}
 			sqlite3_finalize(stmt);
+			closeDatabase(db);
 		}
 	}
 	if (strlen(line) == 0){

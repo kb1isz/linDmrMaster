@@ -22,19 +22,19 @@
 #define NUMSLOTS 2                                        //DMR IS 2 SLOT
 #define SLOT1 4369                                        //HEX 1111
 #define SLOT2 8738                                        //HEX 2222
-#define VCALL 4369                                        //HEX 1111
-#define DCALL 26214                                        //HEX 6666
-#define ISSYNC 61166										//HEX EEEE
-#define VCALLEND 8738										//HEX 2222
+//#define VCALL 4369                                        //HEX 1111
+//#define DCALL 26214                                        //HEX 6666
+//#define ISSYNC 61166										//HEX EEEE
+//#define VCALLEND 8738										//HEX 2222
 //#define CALL 2
 //#define CALLEND 3
-#define PTYPE_ACTIVE1 2                                        
-#define PTYPE_END1 3
-#define PTYPE_ACTIVE2 66
-#define PTYPE_END2 67
+//#define PTYPE_ACTIVE1 2                                        
+//#define PTYPE_END1 3
+//#define PTYPE_ACTIVE2 66
+//#define PTYPE_END2 67
 #define VFRAMESIZE 72                                        //UDP PAYLOAD SIZE OF REPEATER VOICE/DATA TRAFFIC
-#define SYNC_OFFSET1 18                                        //UDP OFFSETS FOR VARIOUS BYTES IN THE DATA STREAM
-#define SYNC_OFFSET2 19                                        //
+//#define SYNC_OFFSET1 18                                        //UDP OFFSETS FOR VARIOUS BYTES IN THE DATA STREAM
+//#define SYNC_OFFSET2 19                                        //
 //#define SYNC_OFFSET3 18                                        //Look for EEEE
 //#define SYNC_OFFSET4 19                                        //Look for EEEE
 #define SLOT_OFFSET1 16                                        //        
@@ -48,13 +48,32 @@
 #define DST_OFFSET3 66
 #define TYP_OFFSET1 62
 
+#define SLOT_TYPE_OFFSET1 18
+#define SLOT_TYPE_OFFSET2 19
+#define FRAME_TYPE_OFFSET1 22
+#define FRAME_TYPE_OFFSET2 23
+
 struct allow{
 	bool repeater;
 	bool sMaster;
 	bool isRange;
 };
+
+struct BPTC1969{
+	bool responseRequested;
+        int dataPacketFormat;
+        int sapId;
+        int appendBlocks;
+};
+
 void delRdacRepeater();
 void delRepeater();
+bool * convertToBits();
+struct BPTC1969 decodeBPTC1969();
+unsigned char *  decodeThreeQuarterRate();
+void decodeHyteraGpsTriggered();
+void decodeHyteraGpsCompressed();
+void decodeHyteraGpsButton();
 
 struct allow checkTalkGroup(int dstId, int slot, int callType){
 	struct allow toSend = {0};
@@ -109,29 +128,31 @@ struct allow checkTalkGroup(int dstId, int slot, int callType){
 	return toSend;
 }
 
-void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in address, int srcId){
+void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in address, int srcId, int repPos){
 	struct frame{
 		unsigned char buf[VFRAMESIZE];
 	};
 	struct frame record[2000];
 	long frames = 0;
 	int n,rc,i;
-	int sync;
+	int slotType=0,frameType=0;
 	fd_set fdMaster;
 	struct timeval timeout;
 	struct sockaddr_in cliaddr;
 	socklen_t len;
 	bool timedOut = false;
 	FILE *referenceFile;
-	char fileName[30];
-	//sprintf(fileName,"%i.record",srcId);
+	FILE *recordFile;
+	char fileName[100];
+
+	sprintf(fileName,"%i.record",srcId);
 	
-	//recordFile = fopen(fileName,"wb");
+	recordFile = fopen(fileName,"wb");
 	
 	FD_ZERO(&fdMaster);
 	
 	memcpy(record[frames].buf,buffer,VFRAMESIZE);
-	//fwrite(buffer,VFRAMESIZE,1,recordFile);
+	fwrite(buffer,VFRAMESIZE,1,recordFile);
 	len = sizeof(cliaddr);
 	do{
 		FD_SET(sockfd, &fdMaster);
@@ -145,50 +166,58 @@ void echoTest(unsigned char buffer[VFRAMESIZE],int sockfd, struct sockaddr_in ad
 			n = recvfrom(sockfd,buffer,VFRAMESIZE,0,(struct sockaddr *)&cliaddr,&len);
 		
 			if (n>2){
-				sync = buffer[SYNC_OFFSET1] << 8 | buffer[SYNC_OFFSET2];
+				slotType = buffer[SLOT_TYPE_OFFSET1] << 8 | buffer[SLOT_TYPE_OFFSET2];
+				frameType = buffer[FRAME_TYPE_OFFSET1] << 8 | buffer[FRAME_TYPE_OFFSET2];
 				if (frames < 2000){
 					frames++;
 					memcpy(record[frames].buf,buffer,VFRAMESIZE);
-					//fwrite(buffer,VFRAMESIZE,1,recordFile);
+					fwrite(buffer,VFRAMESIZE,1,recordFile);
 				} 
 			}
 		}
 		else{
 			timedOut = true;
 		}
-	}while (sync != VCALLEND || timedOut == false);
-	//fclose(recordFile);
+	}while ((slotType != 0x2222 && frameType != 0xaaaa) || timedOut == false);
+	fclose(recordFile);
 	sleep(1);
-	syslog(LOG_NOTICE,"Playing echo back");
+	syslog(LOG_NOTICE,"Playing echo back for radio %i",srcId);
 	
 	for (i=0;i<=frames;i++){
 		sendto(sockfd,record[i].buf,VFRAMESIZE,0,(struct sockaddr *)&address,sizeof(address));
-		sync = record[i].buf[SYNC_OFFSET1] << 8 | record[i].buf[SYNC_OFFSET2];
-		if (sync != ISSYNC) usleep(60000);
+		slotType = record[i].buf[SLOT_TYPE_OFFSET1] << 8 | record[i].buf[SLOT_TYPE_OFFSET2];
+		frameType = record[i].buf[FRAME_TYPE_OFFSET1] << 8 | record[i].buf[FRAME_TYPE_OFFSET2];
+		if (slotType != 0xeeee && frameType != 0x1111) usleep(60000);
 	}
-	sprintf(fileName,"reference.voice",srcId);
+	sprintf(fileName,"reference_%s.voice",repeaterList[repPos].language);
         if (referenceFile = fopen(fileName,"rb")){
-		syslog(LOG_NOTICE,"Playing reference file");
+		sleep(1);
+		syslog(LOG_NOTICE,"Playing reference file %s",fileName);
 		while (fread(buffer,VFRAMESIZE,1,referenceFile)){
-			buffer[SRC_OFFSET1] = srcId;
-			buffer[SRC_OFFSET2] = srcId >> 8;
-			buffer[SRC_OFFSET3] = srcId >> 16;
 			sendto(sockfd,buffer,VFRAMESIZE,0,(struct sockaddr *)&address,sizeof(address));
-			if (sync != ISSYNC) usleep(60000);
+			slotType = buffer[SLOT_TYPE_OFFSET1] << 8 | buffer[SLOT_TYPE_OFFSET2];
+			frameType = buffer[FRAME_TYPE_OFFSET1] << 8 | buffer[FRAME_TYPE_OFFSET2];
+			if (slotType != 0xeeee && frameType != 0x1111) usleep(60000);
 		}
 	fclose(referenceFile);
+	}
+	else{
+		syslog(LOG_NOTICE,"reference file %s not found",fileName); 
 	}
 }
 
 void *dmrListener(void *f){
-	int sockfd,n,i,rc;
+	int sockfd,n,i,rc,ii;
 	struct sockaddr_in servaddr,cliaddr;
 	socklen_t len;
 	unsigned char buffer[VFRAMESIZE];
 	unsigned char response[VFRAMESIZE] ={0};
-	int repPos = (intptr_t)f;
+	struct sockInfo* param = (struct sockInfo*) f;
+	int repPos = param->port - baseDmrPort;
+	struct sockaddr_in cliaddrOrg = param->address;
 	int packetType = 0;
-	int sync = 0;
+	int frameType = 0;
+	int slotType = 0;
 	int srcId = 0;
 	int dstId = 0;
 	int callType = 0;
@@ -201,7 +230,16 @@ void *dmrListener(void *f){
 	unsigned char sMasterFrame[103];
 	char myId[11];
 	unsigned char webUserInfo[100];
-	//{0x00,0x00,0x00,0x00,0x32,0x30,0x34,0x31,0x39,0x2e,0x37}
+	unsigned char dmrPacket[33];
+	bool *bits;
+	struct BPTC1969 BPTC1969decode[3];
+	int dataBlocks[3] = {0};
+	unsigned char *decoded34[3];
+	unsigned char decodedString[3][300];
+
+	unsigned char gpsStringHyt[4] = {0x08,0xD0,0x03,0x00};
+	unsigned char gpsStringButtonHyt[4] = {0x08,0xA0,0x02,0x00};
+	unsigned char gpsCompressedStringHyt[4] = {0x01,0xD0,0x03,0x00};
 
 	syslog(LOG_NOTICE,"DMR thread for port %i started",baseDmrPort + repPos);
 	sockfd=socket(AF_INET,SOCK_DGRAM,0);
@@ -217,7 +255,8 @@ void *dmrListener(void *f){
 	memcpy(myId+4,master.ownCountryCode,4);
 	memcpy(myId+7,master.ownRegion,1);
 	memcpy(myId+8,version,3);
-    
+	memset(decodedString,0,300);
+
 	bzero(&servaddr,sizeof(servaddr));
 	servaddr.sin_family = AF_INET;
 	servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
@@ -244,11 +283,14 @@ void *dmrListener(void *f){
 				slot = buffer[SLOT_OFFSET1] / 16;
 				if (dmrState[slot] == IDLE || repeaterList[repPos].sending[slot]){
 					packetType = buffer[PTYPE_OFFSET];
-					sync = buffer[SYNC_OFFSET1] << 8 | buffer[SYNC_OFFSET2];
+					slotType = buffer[SLOT_TYPE_OFFSET1] << 8 | buffer[SLOT_TYPE_OFFSET2];
+					frameType = buffer[FRAME_TYPE_OFFSET1] << 8 | buffer[FRAME_TYPE_OFFSET2];
 					switch (packetType){
 				
-						case 0x01:
-						if (sync == VCALL && dmrState[slot] != VOICE && block[slot] == false){
+						case 0x02:
+						if (slotType == 0xeeee && frameType == 0x1111 && dmrState[slot] != VOICE && block[slot] == false){ //Hytera voice sync packet
+							//Sync packet is send before Voice LC header and every time the embedded LC (4 packets) in a voice superframe has been send
+							//When voice call starts, this is the first packet where we can see src and dst)
 							sMasterFrame[98] = slot;
 							srcId = buffer[SRC_OFFSET3] << 16 | buffer[SRC_OFFSET2] << 8 | buffer[SRC_OFFSET1];
 							dstId = buffer[DST_OFFSET3] << 16 | buffer[DST_OFFSET2] << 8 | buffer[DST_OFFSET1];
@@ -259,8 +301,8 @@ void *dmrListener(void *f){
 								sendto(sMaster.sockfd,webUserInfo,strlen(webUserInfo),0,(struct sockaddr *)&sMaster.address,sizeof(sMaster.address));
 							}
 							if (dstId == echoId){
-								syslog(LOG_NOTICE,"[%i-%s]Echo test started on slot %i src %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId);
-								echoTest(buffer,sockfd,repeaterList[repPos].address,srcId);
+								syslog(LOG_NOTICE,"[%s]Echo test started on slot %i src %i",repeaterList[repPos].callsign,slot,srcId);
+								echoTest(buffer,sockfd,repeaterList[repPos].address,srcId,repPos);
 								repeaterList[repPos].sending[slot] = false;
 								break;
 							} 
@@ -276,32 +318,83 @@ void *dmrListener(void *f){
 								memset(sMasterFrame+90,0,4);
 							}
 							dmrState[slot] = VOICE;
-							syslog(LOG_NOTICE,"[%i-%s]Voice call started on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
-							break;
+							syslog(LOG_NOTICE,"[%s]Voice call started on slot %i src %i dst %i type %i",repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+							//break;
 						}
-						if (sync == DCALL && dmrState[slot] != DATA){
+						break;
+						
+						case 0x01:
+						if (slotType == 0x3333 && dmrState[slot] != DATA){  //CSBK (first slot type for data where we can see src and dst)
 							srcId = buffer[SRC_OFFSET3] << 16 | buffer[SRC_OFFSET2] << 8 | buffer[SRC_OFFSET1];
 							dstId = buffer[DST_OFFSET3] << 16 | buffer[DST_OFFSET2] << 8 | buffer[DST_OFFSET1];
 							callType = buffer[TYP_OFFSET1];
 							toSend.sMaster = false;
-							syslog(LOG_NOTICE,"[%i-%s]Data on slot %i src %i dst %i type %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+							if (dstId == rrsGpsId) toSend.repeater = false;
 							break;
 						}
+						
+						memcpy(dmrPacket,buffer+26,34);  //copy the dmr part out of the Hyetra packet
+						bits = convertToBits(dmrPacket); //convert it to bits
+						
+						if (slotType == 0x4444){  //Data header
+							repeaterList[repPos].sending[slot] = true;
+							dmrState[slot] = DATA;
+							dataBlocks[slot] = 0;
+							BPTC1969decode[slot] = decodeBPTC1969(bits);
+							syslog(LOG_NOTICE,"[%s]Data header on slot %i src %i dst %i type %i appendBlocks %i",repeaterList[repPos].callsign,slot,srcId,dstId,callType,BPTC1969decode[slot].appendBlocks);
+							break;
+						}
+						
+						if (slotType == 0x5555 && dmrState[slot] == DATA){ // 1/2 rate data continuation
+							//syslog(LOG_NOTICE,"[%s]1/2 rate data continuation on slot %i src %i dst %i type %i",repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+							dataBlocks[slot]++;
+							if(BPTC1969decode[slot].appendBlocks == dataBlocks[slot]){
+								dmrState[slot] = IDLE;
+								dataBlocks[slot] = 0;
+								repeaterList[repPos].sending[slot] = false;
+								//syslog(LOG_NOTICE,"[%s]All data blocks received",repeaterList[repPos].callsign);
+							}
+							break;
+						}
+						if (slotType == 0x6666 && dmrState[slot] == DATA){ // 3/4 rate data continuation
+							syslog(LOG_NOTICE,"[%s]3/4 rate data continuation on slot %i src %i dst %i type %i",repeaterList[repPos].callsign,slot,srcId,dstId,callType);
+							decoded34[slot] = decodeThreeQuarterRate(bits);
+							memcpy(decodedString[slot]+(18*dataBlocks[slot]),decoded34[slot],18);
+							dataBlocks[slot]++;
+							if(BPTC1969decode[slot].appendBlocks == dataBlocks[slot]){
+								dmrState[slot] = IDLE;
+								//printf("String\n");
+								//for(ii=0;ii<(dataBlocks[slot]*18);ii++){
+									//printf("(%02X)%c",decodedString[slot][ii],decodedString[slot][ii]);
+								//}
+								//printf("\n");
+								dataBlocks[slot] = 0;
+								repeaterList[repPos].sending[slot] = false;
+								syslog(LOG_NOTICE,"[%s]All data blocks received",repeaterList[repPos].callsign);
+								//printf("--------------------------------------------------------------\n");
+								if (dstId == rrsGpsId){
+									if(memcmp(decodedString[slot] + 4,gpsStringHyt,4) == 0) decodeHyteraGpsTriggered(srcId,repeaterList[repPos],decodedString[slot]);
+									if(memcmp(decodedString[slot] + 4,gpsStringButtonHyt,4) == 0) decodeHyteraGpsButton(srcId,repeaterList[repPos],decodedString[slot]);
+									if(memcmp(decodedString[slot] + 4,gpsCompressedStringHyt,4) == 0) decodeHyteraGpsCompressed(srcId,repeaterList[repPos],decodedString[slot]);
+								}
+								memset(decodedString[slot],0,300);
+							}
+						}
 						break;
-				
+						
 						case 0x03:
-						if (sync == VCALLEND){
+						if (slotType == 0x2222){  //Terminator with LC
 							dmrState[slot] = IDLE;
 							repeaterList[repPos].sending[slot] = false;
-							syslog(LOG_NOTICE,"[%i-%s]Voice call ended on slot %i",baseDmrPort + repPos,repeaterList[repPos].callsign,slot);
-							if (block[slot] == true) syslog(LOG_NOTICE,"[%i-%s] But was blocked because of not allowed talk group",baseDmrPort + repPos,repeaterList[repPos].callsign);
+							syslog(LOG_NOTICE,"[%s]Voice call ended on slot %i",repeaterList[repPos].callsign,slot);
+							if (block[slot] == true) syslog(LOG_NOTICE,"[%s] But was blocked because of not allowed talk group",repeaterList[repPos].callsign);
 							block[slot] = false;
 						}
 						break;
 					}
 					if (!block[slot]){
 						for (i=0;i<highestRepeater;i++){
-							if (repeaterList[i].address.sin_addr.s_addr !=0 && !repeaterList[i].sending[slot]){
+							if (repeaterList[i].address.sin_addr.s_addr !=0 && repeaterList[i].address.sin_addr.s_addr != cliaddrOrg.sin_addr.s_addr){
 								sendto(repeaterList[i].sockfd,buffer,n,0,(struct sockaddr *)&repeaterList[i].address,sizeof(repeaterList[i].address));
 							}
 						}
@@ -313,7 +406,7 @@ void *dmrListener(void *f){
 					}
 				}
 				else{
-					syslog(LOG_NOTICE,"[%i-%s]Incomming traffic on slot %i, but DMR not IDLE",baseDmrPort + repPos,repeaterList[repPos].callsign,slot);
+					syslog(LOG_NOTICE,"[%s]Incomming traffic on slot %i, but DMR not IDLE",repeaterList[repPos].callsign,slot);
 				}
 			}
 			else{
@@ -330,25 +423,33 @@ void *dmrListener(void *f){
 			}
 			time(&timeNow);
 			if (repeaterList[repPos].sending[1] && dmrState[1] != IDLE){
-				if (dmrState[1] = VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 1",baseDmrPort + repPos,repeaterList[repPos].callsign);
+				if (dmrState[1] == VOICE) syslog(LOG_NOTICE,"[%s]Voice call ended after timeout on slot 1",repeaterList[repPos].callsign);
+				if (dmrState[1] == DATA){
+					syslog(LOG_NOTICE,"[%s]Data call ended after timeout on slot 1",repeaterList[repPos].callsign);
+					dataBlocks[1] = 0;
+				}
 				dmrState[1] = IDLE;
 				repeaterList[repPos].sending[1] = false;
 				block[1] = false;
-				syslog(LOG_NOTICE,"[%i-%s]Slot 1 IDLE",baseDmrPort + repPos,repeaterList[repPos].callsign);
+				syslog(LOG_NOTICE,"[%s]Slot 1 IDLE",repeaterList[repPos].callsign);
 			}
 			if (repeaterList[repPos].sending[2] && dmrState[2] != IDLE){
-				if (dmrState[2] = VOICE) syslog(LOG_NOTICE,"[%i-%s]Voice call ended after timeout on slot 2",baseDmrPort + repPos,repeaterList[repPos].callsign);
+				if (dmrState[2] == VOICE) syslog(LOG_NOTICE,"[%s]Voice call ended after timeout on slot 2",repeaterList[repPos].callsign);
+				if (dmrState[2] == DATA){
+					syslog(LOG_NOTICE,"[%s]Data call ended after timeout on slot 2",repeaterList[repPos].callsign);
+					dataBlocks[2] = 0;
+				}
 				dmrState[2] = IDLE;
 				repeaterList[repPos].sending[2] = false;
 				block[2] = false;
-				syslog(LOG_NOTICE,"[%i-%s]Slot 2 IDLE",baseDmrPort + repPos,repeaterList[repPos].callsign);
+				syslog(LOG_NOTICE,"[%s]Slot 2 IDLE",repeaterList[repPos].callsign);
 			}
 			if (difftime(timeNow,pingTime) > 60 && !repeaterList[repPos].sending[slot]){
 				syslog(LOG_NOTICE,"PING timeout on DMR port %i repeater %s, exiting thread",baseDmrPort + repPos,repeaterList[repPos].callsign);
 				syslog(LOG_NOTICE,"Removing repeater from list position %i",repPos);
-				delRepeater(cliaddr);
+				delRepeater(cliaddrOrg);
 				if (repPos + 1 == highestRepeater) highestRepeater--;
-				delRdacRepeater(cliaddr);
+				delRdacRepeater(cliaddrOrg);
 				close(sockfd);
 				pthread_exit(NULL);
 			}

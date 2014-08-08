@@ -49,7 +49,6 @@ void *webServerListener(){
     struct sockaddr_in servaddr;
 	int yes=1;        // for setsockopt() SO_REUSEADDR, below
 	pthread_t thread;
-    
     /*  Create socket  */
 
     if ( (listener = socket(AF_INET, SOCK_STREAM, 0)) < 0 ){
@@ -58,10 +57,10 @@ void *webServerListener(){
     }
 
     /*  Populate socket address structure  */
-
+	
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family      = AF_INET;
-    servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    servaddr.sin_addr.s_addr = inet_addr("0.0.0.0");
     servaddr.sin_port        = htons(SERVER_PORT);
 
 	setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
@@ -381,7 +380,7 @@ int Return_Resource(int conn, FILE *resource, struct ReqInfo * reqinfo) {
 	if (strstr(reqinfo->resource,".html")){
 		while(fgets(line,sizeof(line),resource)){
 			sprintf(sendLine,"%s",htmlReplace(line,reqinfo->resource));
-			if ( write(conn, sendLine, strlen(sendLine)) < 1 ){
+			if ( send(conn, sendLine, strlen(sendLine),MSG_NOSIGNAL) < 1 ){
 				syslog(LOG_NOTICE,"Error sending file.");
 				break;
 			}
@@ -390,7 +389,7 @@ int Return_Resource(int conn, FILE *resource, struct ReqInfo * reqinfo) {
 	else{
 		while (!feof(resource)){
 			c = fgetc(resource);
-			if ( write(conn, &c, 1) < 1 ){
+			if ( send(conn, &c, 1,MSG_NOSIGNAL) < 1 ){
 				syslog(LOG_NOTICE,"Error sending file.");
 				break;
 			}
