@@ -26,13 +26,8 @@ int rdacPort = 50002;
 int baseRdacPort = 50200;
 int maxRepeaters = 20;
 int echoId = 9990;
-<<<<<<< HEAD
-int recordId = 9991;
-char version[5] = "0.9";
-=======
 int rrsGpsId = 500;
 char version[5] = "1.0";
->>>>>>> upstream/master
 
 struct repeater repeaterList[100] = {0};
 struct repeater emptyRepeater = {0};
